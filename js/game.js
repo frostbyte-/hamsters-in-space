@@ -268,7 +268,7 @@ function checkWin(p) {
 
 // ===== Game start =====
 
-function startGame(numPlayers, playerNames) {
+function startGame(numPlayers, playerNames, playroomPlayerIds=[]) {
   nextInstanceId=1;
   currentPhase='production';
   pendingSteal=null; pendingAttack=null; pendingDefenderChoice=null;
@@ -287,6 +287,7 @@ function startGame(numPlayers, playerNames) {
     cardMarket:[],
     firstTurnDone:false, junkyard:[], removed:[],
     pirateMarket:[], pirateDeck:[],
+    playroomPlayerIds,   // parallel array to players[]; used by each client to find their own index
     log:[]
   };
   game.cardMarket = buildCardMarket();

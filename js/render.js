@@ -100,6 +100,8 @@ function renderGame() {
 // ===== Card Market =====
 
 function renderCardMarket() {
+  const _mpMode   = typeof window.myPlayerIndex === 'number';
+  const _isMyTurn = !_mpMode || game.currentPlayerIndex === window.myPlayerIndex;
   const p = currentPlayer();
   const inBuy = !!pendingBuyPhase;
   const bought = inBuy ? (pendingBuyPhase.cardsBought||0) : 0;
@@ -125,9 +127,9 @@ function renderCardMarket() {
     const costStr = renderCostCompact(card.cost);
 
     let actions;
-    if (isSneakMarket) {
+    if (isSneakMarket && _isMyTurn) {
       actions = [{label:'&#9670; Take (free)', fn:`sneakPickMarketCard(${idx})`, primary:true}];
-    } else if (inBuy && !atBuyLimit && !pendingBuyPhase.junkyardUsed) {
+    } else if (inBuy && _isMyTurn && !atBuyLimit && !pendingBuyPhase.junkyardUsed) {
       const dfxBuy=getPenaltyEffects(game.currentPlayerIndex);
       const effS=(card.cost.scrap||0)+((card.cost.scrap||0)>0?(dfxBuy.scrapPremium||0):0);
       const effT=(card.cost.tech||0)+((card.cost.tech||0)>0?(dfxBuy.techPremium||0):0);
@@ -150,15 +152,21 @@ function renderCardMarket() {
   if (inBuy) {
     const repairedBadge = pendingBuyPhase.repaired ? ` <span class="buy-count-badge" style="background:#5a8;color:#fff;">&#8617; Repaired</span>` : '';
     const junkyardBadge = pendingBuyPhase.junkyardUsed ? ` <span class="buy-count-badge" style="background:#76522a;color:#fff;">🗑️ Junk Shop used</span>` : '';
-    const dfxBuy = getPenaltyEffects(game.currentPlayerIndex);
-    const hasJunkCards = game.junkyard.some(j=>j.type==='card');
-    const canShopJunk = !pendingBuyPhase.junkyardUsed && pendingBuyPhase.cardsBought===0
-      && p.pirateTokens>=1 && hasJunkCards && !dfxBuy.noJunkyardPick;
-    html += `<div class="buy-phase-bar">
-      <span class="buy-phase-label">&#128178; Resupply Phase — buy up to 2 cards${repairedBadge}${junkyardBadge} (${SCRAP_ICON}${p.scrap} ${TECH_ICON}${p.tech} available)</span>
-      ${canShopJunk ? `<button onclick="startJunkyardShop()">🗑️ Junk Shop (1 ${icon('pirate')})</button>` : ''}
-      <button class="primary" onclick="endBuyPhase()">&#10003; Done (end turn)</button>
-    </div>`;
+    if (_isMyTurn) {
+      const dfxBuy = getPenaltyEffects(game.currentPlayerIndex);
+      const hasJunkCards = game.junkyard.some(j=>j.type==='card');
+      const canShopJunk = !pendingBuyPhase.junkyardUsed && pendingBuyPhase.cardsBought===0
+        && p.pirateTokens>=1 && hasJunkCards && !dfxBuy.noJunkyardPick;
+      html += `<div class="buy-phase-bar">
+        <span class="buy-phase-label">&#128178; Resupply Phase — buy up to 2 cards${repairedBadge}${junkyardBadge} (${SCRAP_ICON}${p.scrap} ${TECH_ICON}${p.tech} available)</span>
+        ${canShopJunk ? `<button onclick="startJunkyardShop()">🗑️ Junk Shop (1 ${icon('pirate')})</button>` : ''}
+        <button class="primary" onclick="endBuyPhase()">&#10003; Done (end turn)</button>
+      </div>`;
+    } else {
+      html += `<div class="buy-phase-bar">
+        <span class="buy-phase-label">&#128178; ${escape(currentPlayer().name)} is in Resupply Phase${repairedBadge}${junkyardBadge}</span>
+      </div>`;
+    }
   }
   if (isSneakMarket) {
     const remaining = pendingSneakChoice.marketPicksRemaining||1;
