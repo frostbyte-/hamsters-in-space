@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hamsters in Space</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/main.css?v=101">
+</head>
+<body>
+
+<header>
+  <h1>🐹🚀 Hamsters in Space</h1>
+  <div class="header-actions">
+    <label style="font-size:12px;">
+      <input type="checkbox" id="pass-and-play"> Pass-and-play
+    </label>
+    <label style="font-size:12px;">
+      <input type="checkbox" id="ultrawide-toggle"> Ultrawide
+    </label>
+    <button id="btn-new-game">New Game</button>
+    <button id="btn-load-config">Load Config Files</button>
+    <button id="btn-show-rules">Rules</button>
+    <button id="btn-show-cards">Cards</button>
+  </div>
+</header>
+
+<main>
+  <div id="setup-view">
+    <h2>Game Setup</h2>
+
+    <div class="setup-modes">
+      <div class="setup-mode-card">
+        <h3>Solo / Pass-and-Play</h3>
+        <label>
+          Number of players:
+          <select id="player-count">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>
+        </label>
+        <div id="player-names"></div>
+        <button id="btn-start" class="primary" style="margin-top:12px;">▶ Start Game</button>
+      </div>
+
+      <div class="setup-mode-card">
+        <h3>Online Multiplayer</h3>
+        <p style="font-size:13px;color:#aaa;margin:0 0 12px;">Each player joins on their own device. Names are set in the Playroom lobby.</p>
+        <button id="btn-multiplayer" class="primary">🌐 Start Multiplayer</button>
+      </div>
+    </div>
+
+    <p style="margin-top:20px;color:#888;font-size:13px;">
+      Each turn: Production → Action → Resupply<br><br>
+      Actions: Deploy (play cards to tableau for resources), or use suit abilities:<br>⚡ Engine=Steal<br>💥 Weapon=Attack<br>🧭 Navigation=Sneak<br>🛡️ Shield=Block<br><br>
+      Buy cards using resources (⚙️ Scrap, 🧵 Tech) acquired<br><br>
+      Build 3 same-suit tableau cards into a ship part (🚀)<br><br>
+      Work with Pirates (👾) to get access to parts that are cheap (but will they work?)<br><br>
+      First player to build 3 ship parts wins!
+    </p>
+  </div>
+
+  <div id="game-view" hidden>
+    <div id="players-left" class="players-side"></div>
+    <div id="center-column">
+      <div id="status-bar"></div>
+      <div id="market-row">
+        <div id="market-section" class="section card-market-section"></div>
+      </div>
+      <div id="action-section"></div>
+      <div id="players-section"></div>
+      <div id="pirate-section" class="section pirate-section"></div>
+      <div id="log-section" class="section log-section"></div>
+    </div>
+    <div id="players-right" class="players-side"></div>
+  </div>
+</main>
+
+<div id="flash"></div>
+
+<dialog id="win-dialog">
+  <h2>🚀 Ship Complete!</h2>
+  <p><strong id="win-player-name"></strong> wins!</p>
+  <p id="win-parts-list" style="color:#aaa;font-size:14px;"></p>
+  <div class="dialog-actions">
+    <button id="btn-win-close">Go Back</button>
+    <button id="btn-win-new-game" class="primary">New Game</button>
+  </div>
+</dialog>
+
+
+<dialog id="config-dialog">
+  <h2>Load Config Files</h2>
+  <p style="font-size:13px;color:#aaa;">
+    Select any combination of files. Loading new files starts a new game.
+  </p>
+  <div class="config-row">
+    <label>Cards CSV (columns: Card ID, Title, Description, Power, Quantity in deck, Suit)</label>
+    <input type="file" id="file-cards" accept=".csv,text/csv">
+  </div>
+  <div class="config-row">
+    <label>Rules JSON</label>
+    <input type="file" id="file-rules" accept=".json,application/json">
+  </div>
+  <div class="config-row">
+    <label>Art Prompts CSV (columns: Card ID, Art Prompt)</label>
+    <input type="file" id="file-prompts" accept=".csv,text/csv">
+  </div>
+  <div class="dialog-actions">
+    <button id="btn-config-cancel">Cancel</button>
+    <button id="btn-config-apply" class="primary">Apply</button>
+  </div>
+</dialog>
+
+<dialog id="rules-dialog">
+  <h2>Current Rules</h2>
+  <pre id="rules-display"></pre>
+  <div class="dialog-actions">
+    <button id="btn-rules-close">Close</button>
+  </div>
+</dialog>
+
+<dialog id="cards-dialog">
+  <h2>Card Definitions</h2>
+  <pre id="cards-display"></pre>
+  <div class="dialog-actions">
+    <button id="btn-cards-close">Close</button>
+  </div>
+</dialog>
+
+<dialog id="art-dialog">
+  <h2 id="art-title"></h2>
+  <div class="card-art-prompt" id="art-prompt"></div>
+  <div class="dialog-actions">
+    <button id="btn-art-copy">Copy Prompt</button>
+    <button id="btn-art-close">Close</button>
+  </div>
+</dialog>
+
+<!-- Playroom SDK loaded on demand inside js/multiplayer.js -->
+
+<!-- Load order matters: lower files depend on the ones above. -->
+<script src="js/helpers.js?v=101"></script>
+<script src="js/config.js?v=101"></script>
+<script src="js/art.js?v=101"></script>
+<script src="js/game.js?v=101"></script>
+<script src="js/render.js?v=101"></script>
+<script src="js/multiplayer.js?v=101"></script>
+<script src="js/main.js?v=101"></script>
+
+<footer style="text-align:center; padding: 24px 0 16px; font-size: 13px; color: rgba(255,255,255,0.35); letter-spacing: 0.04em;">
+  Hamsters in Space &mdash; a game by Siddharth Surana
+</footer>
+
+</body>
+</html>

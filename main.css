@@ -1,0 +1,2859 @@
+* { box-sizing: border-box; }
+
+:root {
+  /* Design tokens — Board Setup spec */
+  --ink:      #0b0a1f;
+  --void:     #0a0820;
+  --paper:    #f4ead5;
+  --gold:     #e9c46a;
+  --gold-deep:#caa24a;
+  --suit-hue: 0; /* fallback; overridden per .card-holo-wrap.suit-X */
+
+  /* Suit accent colors */
+  --engine-color:     #3fb98a;
+  --weapons-color:    #e25c5c;
+  --navigation-color: #e4b53a;
+  --shield-color:     #5ea8e3;
+  --pirate-color:     #a86bd6;
+  --neutral-color:    #888;
+
+  /* Suit dark card backgrounds */
+  --engine-card-bg:     #1c3530;
+  --weapons-card-bg:    #3a1d24;
+  --navigation-card-bg: #3a3018;
+  --shield-card-bg:     #1a2b3e;
+  --pirate-card-bg:     #2c1c3c;
+  --neutral-card-bg:    #1e1e1e;
+  --wild-card-bg:       #1a1228;
+}
+
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0b0926;
+  color: #f4ead5;
+}
+
+/* ===== Header ===== */
+header {
+  background: #070617;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(244,234,213,0.1);
+  flex-wrap: wrap;
+  gap: 10px;
+}
+header h1 { margin: 0; font-size: 18px; font-family: "Space Grotesk", sans-serif; font-weight: 700; color: var(--paper); }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+/* ===== Buttons ===== */
+button {
+  background: #3a3a5c;
+  color: #eaeaea;
+  border: 1px solid #555;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: "Space Grotesk", sans-serif;
+}
+button:hover { background: #4a4a7c; }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { background: #2a6e4a; border-color: #3a8e5a; }
+button.primary:hover { background: #3a8e5a; }
+button.danger { background: #6e2a2a; border-color: #8e3a3a; }
+button.danger:hover { background: #8e3a3a; }
+
+/* Suit-colored build buttons */
+button.suit-btn-engine     { background: var(--engine-card-bg);     border-color: var(--engine-color); color: var(--paper); }
+button.suit-btn-engine:not(:disabled):hover { filter: brightness(1.2); }
+button.suit-btn-weapons    { background: var(--weapons-card-bg);    border-color: var(--weapons-color); color: var(--paper); }
+button.suit-btn-weapons:not(:disabled):hover { filter: brightness(1.2); }
+button.suit-btn-navigation { background: var(--navigation-card-bg); border-color: var(--navigation-color); color: var(--paper); }
+button.suit-btn-navigation:not(:disabled):hover { filter: brightness(1.2); }
+button.suit-btn-shield     { background: var(--shield-card-bg);     border-color: var(--shield-color); color: var(--paper); }
+button.suit-btn-shield:not(:disabled):hover { filter: brightness(1.2); }
+
+main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+
+/* ===== Setup view ===== */
+#setup-view {
+  max-width: 700px;
+  margin: 40px auto;
+  background: #232340;
+  padding: 30px;
+  border-radius: 8px;
+}
+#setup-view h2 { margin-top: 0; }
+#setup-view label { display: block; margin: 12px 0; }
+#setup-view input,
+#setup-view select {
+  background: #1a1a2e; color: #eaeaea; border: 1px solid #555;
+  padding: 6px 10px; border-radius: 4px; font-size: 14px; width: 100%;
+}
+#player-names input { margin-top: 4px; }
+.setup-modes {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.setup-mode-card {
+  flex: 1;
+  background: #1a1a2e;
+  border: 1px solid #383860;
+  border-radius: 8px;
+  padding: 20px;
+}
+.setup-mode-card h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #ffd166;
+}
+
+/* ===== Game view ===== */
+#status-bar {
+  background: #232340;
+  padding: 10px 16px;
+  border-radius: 6px;
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+#status-bar .turn-indicator {
+  font-weight: bold;
+  color: #ffd166;
+}
+#status-bar .phase-indicator {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.65);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.pool-status {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.pool-token {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: bold;
+}
+.pool-token.engine     { background: rgba(76,175,80,0.25); color: var(--engine-color); }
+.pool-token.weapons    { background: rgba(239,83,80,0.25); color: var(--weapons-color); }
+.pool-token.navigation { background: rgba(255,215,64,0.25); color: var(--navigation-color); }
+.pool-token.shield     { background: rgba(66,165,245,0.25); color: var(--shield-color); }
+
+/* ===== Pending resources indicator ===== */
+.pending-res {
+  color: #ffd166;
+  font-weight: bold;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* ===== Repair card selection ===== */
+.card.repair-selected {
+  outline: 2px solid #ffd166;
+  box-shadow: 0 0 8px rgba(255,209,102,0.5);
+}
+.card.build-selected {
+  outline: 2px solid #3fb98a;
+  box-shadow: 0 0 8px rgba(63,185,138,0.5);
+}
+.repair-panel { border-color: #ffd166; }
+.ability-pick-panel { border-color: #a070c0; }
+.build-select-panel { border-color: #3fb98a; }
+.ability-pick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ability-pick-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.section {
+  background: #232340;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+.section h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aaa;
+}
+
+/* ===== Ship parts market ===== */
+#market-section h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aaa;
+}
+.ship-market-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+@media (max-width: 900px) {
+  .ship-market-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.ship-market-column {
+  border-radius: 6px;
+  padding: 8px;
+}
+.suit-col-engine     { background: rgba(63,185,138,0.07);  border: 1px solid rgba(63,185,138,0.22); }
+.suit-col-weapons    { background: rgba(226,92,92,0.07);   border: 1px solid rgba(226,92,92,0.22); }
+.suit-col-navigation { background: rgba(228,181,58,0.07);  border: 1px solid rgba(228,181,58,0.22); }
+.suit-col-shield     { background: rgba(94,168,227,0.07);  border: 1px solid rgba(94,168,227,0.22); }
+.suit-market-label {
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+.suit-market-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.suit-market-cards .ship-part-card { width: auto; }
+.ship-part-buff-box {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 4px 0;
+}
+.ship-part-buff-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffd166;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.ship-part-buff-desc {
+  font-size: 10px;
+  color: #aaa;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+.ship-part-cost {
+  font-size: 11px;
+  color: #ffd166;
+  margin: 4px 0;
+}
+.built-label {
+  font-size: 11px;
+  color: #66ddff;
+  margin-bottom: 2px;
+}
+
+/* ===== Cards ===== */
+.card-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 100px;
+}
+.card-row.empty::before {
+  content: "(empty)";
+  color: #555;
+  font-style: italic;
+  align-self: center;
+  padding-left: 10px;
+}
+
+.card {
+  background: #1a1740;
+  border: 1px solid rgba(244,234,213,0.1);
+  border-radius: 10px;
+  padding: 8px;
+  padding-top: 39px; /* clear the stripe exactly */
+  width: 260px;
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(244,234,213,0.06);
+  color: var(--paper);
+}
+.ship-part-card { min-height: 220px; }
+
+/* ── Card stripe — colored top band ──────────────── */
+.card-stripe {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 39px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  font-weight: 500;
+}
+.card-stripe-engine     { background: var(--engine-color); }
+.card-stripe-weapons    { background: var(--weapons-color); }
+.card-stripe-navigation { background: var(--navigation-color); }
+.card-stripe-shield     { background: var(--shield-color); }
+.card-stripe-neutral    { background: #3a3a3a; color: var(--paper); }
+.card-stripe-pirate     { background: var(--pirate-color); }
+.card-stripe-wild       { background: linear-gradient(90deg, #e25c5c, #e4b53a, #3fb98a, #5ea8e3, #a86bd6); }
+/* Produces text in stripe — plain, left-aligned, no pill */
+.card-stripe-prod {
+  font-size: 19.5px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.card-stripe-neutral .card-stripe-prod,
+.card-stripe-pirate .card-stripe-prod { color: var(--paper); }
+
+/* Stripe name (card title) and suit icon */
+.card-stripe-name {
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+}
+.card-stripe-neutral .card-stripe-name { color: var(--paper); }
+.card-stripe-wild .card-stripe-name {
+  color: #0b0a1f;
+  font-weight: 800;
+}
+.card-stripe-suit {
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+/* Centered card name for full cards (not condensed) */
+.card-stripe-name-center {
+  font-weight: 700;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+}
+.card-stripe-neutral .card-stripe-name-center { color: var(--paper); }
+.card-stripe-wild .card-stripe-name-center { color: #0b0a1f; font-weight: 800; }
+/* Produces pill — used only for pirate card cost in pirate section */
+.card-produces-pill {
+  position: absolute;
+  top: 8px;
+  left: 6px;
+  background: #0d0b1a;
+  border: 1.5px solid oklch(0.68 0.14 295);
+  border-radius: 20px;
+  padding: 3px 8px;
+  font-size: 14px;
+  line-height: 1;
+  z-index: 2;
+  white-space: nowrap;
+  color: oklch(0.85 0.12 295);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+/* Cost pill — floats top-right, overlaps the stripe */
+.card-cost-pill {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  background: #0d0b1a;
+  border: 1.5px solid oklch(0.78 0.16 var(--suit-hue));
+  border-radius: 20px;
+  padding: 3px 8px;
+  z-index: 2;
+  white-space: nowrap;
+  color: oklch(0.9 0.12 var(--suit-hue));
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  line-height: 1;
+}
+.card-cost-pill .cn {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+/* Minimal suit badge in footer corner */
+.suit-badge-mini {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  opacity: 0.75;
+}
+.suit-badge-mini.suit-engine     { color: var(--engine-color); }
+.suit-badge-mini.suit-weapons    { color: var(--weapons-color); }
+.suit-badge-mini.suit-navigation { color: var(--navigation-color); }
+.suit-badge-mini.suit-shield     { color: var(--shield-color); }
+.suit-badge-mini.suit-pirate     { color: var(--pirate-color); }
+.suit-badge-mini.suit-wild       { color: #d4aaff; }
+.suit-badge-mini.suit-neutral    { color: #888; }
+/* Card title below art */
+.card-title-below {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.02em;
+  padding: 2px 4px 5px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(244,234,213,0.14);
+  text-align: center;
+  color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+  line-height: 1.15;
+}
+/* Icon effect line — compact shorthand shown alongside verbose power text */
+.card-icon-text {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  padding: 0 8px 5px;
+  color: oklch(0.82 0.11 var(--suit-hue));
+  flex-shrink: 0;
+  letter-spacing: 0.01em;
+}
+/* Suit badge footer — separator line, suit in bottom-left */
+.card-suit-footer {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 2px;
+  margin-top: 2px;
+  border-top: 0;
+  flex-shrink: 0;
+}
+/* Reactive block button (greyed out when unavailable) */
+.reactive-block-unavail {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* Legacy produces pill — kept for pirate market card use */
+.card-produces-pill {
+  position: absolute;
+  top: 10px;
+  left: 6px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 20px;
+  padding: 5px 9px;
+  font-size: 18px;
+  line-height: 1;
+  z-index: 2;
+  letter-spacing: -1px;
+}
+
+/* Suit card dark backgrounds */
+.card-suit-engine     { background: var(--engine-card-bg);     border-color: rgba(63,185,138,0.35); }
+.card-suit-weapons    { background: var(--weapons-card-bg);    border-color: rgba(226,92,92,0.35); }
+.card-suit-navigation { background: var(--navigation-card-bg); border-color: rgba(228,181,58,0.35); }
+.card-suit-shield     { background: var(--shield-card-bg);     border-color: rgba(94,168,227,0.35); }
+.card-suit-neutral    { background: var(--neutral-card-bg);    border-color: rgba(150,150,150,0.55); }
+.card-suit-pirate     { background: var(--pirate-card-bg);     border-color: rgba(168,107,214,0.35); }
+.card-suit-wild       { background: var(--wild-card-bg);       border: none; }
+
+/* ── Holographic card wrapper (rarity border system) ── */
+.card-holo-wrap {
+  display: inline-flex;
+  border-radius: 12px;
+  padding: 1px;
+  background: rgba(255,255,255,0.18);
+  flex-shrink: 0;
+}
+/* Suit hue custom property — inherited by all descendants including cost pill */
+.card-holo-wrap.suit-engine     { --suit-hue: 150; }
+.card-holo-wrap.suit-weapons    { --suit-hue: 20; }
+.card-holo-wrap.suit-navigation { --suit-hue: 80; }
+.card-holo-wrap.suit-shield     { --suit-hue: 225; }
+.card-holo-wrap.suit-pirate     { --suit-hue: 295; }
+.card-holo-wrap.suit-neutral    { --suit-hue: 210; }
+.card-holo-wrap.suit-wild       { --suit-hue: 280; }
+/* Rarity border treatments */
+.card-holo-wrap.rarity-common   { padding: 1px; background: rgba(255,255,255,0.18); }
+.card-holo-wrap.rarity-uncommon { padding: 1px; background: oklch(0.7 0.14 var(--suit-hue) / 0.7); }
+.card-holo-wrap.rarity-rare     { padding: 2px; background: linear-gradient(135deg, oklch(0.8 0.16 var(--suit-hue)), oklch(0.65 0.18 calc(var(--suit-hue) + 60))); }
+.card-holo-wrap.rarity-mythic   { padding: 2px; background: linear-gradient(135deg, oklch(0.78 0.16 30) 0%, oklch(0.78 0.16 90) 20%, oklch(0.78 0.16 160) 40%, oklch(0.78 0.16 220) 60%, oklch(0.78 0.16 290) 80%, oklch(0.78 0.16 350) 100%); box-shadow: 0 8px 28px -10px oklch(0.6 0.2 var(--suit-hue) / 0.5), 0 0 0 1px rgba(255,255,255,0.25); }
+/* Shimmer overlay (via .card::after inside wrapper) */
+.card-holo-wrap:not(.rarity-common) > .card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  border-radius: 10px;
+}
+.card-holo-wrap.rarity-uncommon > .card::after {
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.04) 50%, transparent 70%);
+}
+.card-holo-wrap.rarity-rare > .card::after {
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
+}
+.card-holo-wrap.rarity-mythic > .card::after {
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.12) 50%, transparent 70%);
+}
+
+/* ── Hidden card (card back) ─────────────────────── */
+.card.hidden-card {
+  background: rgba(8,6,16,0.97);
+  border-color: transparent;
+  padding-top: 8px;
+  align-items: center;
+  justify-content: center;
+}
+/* orbital rings */
+.card-orbit {
+  position: absolute;
+  left: 50%; top: 50%;
+  border-radius: 50%;
+  border: 1px solid oklch(0.7 0.16 var(--ring-hue, 30) / var(--ring-opacity, 0.25));
+  width: calc(var(--ring-scale, 1) * 200px);
+  height: calc(var(--ring-scale, 1) * 200px);
+  transform: translate(-50%, -50%) rotate(var(--ring-rot, 0deg));
+  pointer-events: none;
+}
+/* star field */
+.card-stars {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(rgba(255,255,255,0.5) 0.8px, transparent 1px) 0 0 / 18px 18px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+/* center glyph circle */
+.card-back-center {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.6 0.18 280), oklch(0.3 0.12 280));
+  border: 1px solid rgba(255,255,255,0.35);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  color: #fff;
+  text-shadow: 0 0 18px oklch(0.8 0.2 280);
+  z-index: 1;
+}
+.card-logo {
+  position: absolute;
+  bottom: 10px;
+  left: 0; right: 0;
+  text-align: center;
+  font-family: "DM Mono", monospace;
+  font-size: 7px;
+  letter-spacing: 0.28em;
+  color: rgba(244,234,213,0.4);
+  text-transform: uppercase;
+}
+
+/* Trade-selected highlight */
+.card.trade-selected {
+  box-shadow: 0 0 0 3px #ffd166;
+  border-color: #ffd166;
+}
+
+.suit-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-bottom: 0;
+  font-weight: bold;
+}
+.suit-badge.suit-engine     { background: rgba(63,185,138,0.25); color: var(--engine-color); }
+.suit-badge.suit-weapons    { background: rgba(226,92,92,0.25);  color: var(--weapons-color); }
+.suit-badge.suit-navigation { background: rgba(228,181,58,0.25); color: var(--navigation-color); }
+.suit-badge.suit-shield     { background: rgba(94,168,227,0.25); color: var(--shield-color); }
+.suit-badge.suit-pirate     { background: rgba(168,107,214,0.25); color: var(--pirate-color); }
+.suit-badge.suit-wild       { background: rgba(180,100,255,0.15); color: #d4aaff; }
+.suit-badge.suit-neutral    { background: rgba(150,150,150,0.15); color: #aaa; }
+
+.power-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-bottom: 3px;
+  background: rgba(180,180,180,0.12);
+  color: #aaa;
+  font-weight: bold;
+}
+
+.card-art {
+  width: calc(100% + 16px);
+  margin-left: -8px;
+  margin-right: -8px;
+  height: 150px;
+  object-fit: contain;
+  object-position: center;
+  margin-top: 0;
+  margin-bottom: 4px;
+  display: block;
+  background: #000;
+  flex-shrink: 0;
+}
+
+.card-title {
+  font-weight: bold;
+  font-size: 13px;
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+.card-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #ffd166;
+  margin-bottom: 4px;
+}
+.card-desc {
+  color: #cfc4a8;
+  font-size: 11px;
+  line-height: 1.3;
+  font-family: "Space Grotesk", sans-serif;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.card-power-text {
+  background: rgba(233,196,106,0.13);
+  border: 1px solid rgba(233,196,106,0.32);
+  border-radius: 6px;
+  color: #ffe29a;
+  font-size: 13px;
+  line-height: 1.3;
+  padding: 6px 7px;
+  margin: 4px 0 4px;
+  font-weight: 650;
+}
+.card-power-label {
+  color: var(--gold);
+  display: block;
+  font-family: "DM Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+.card-power-text.tableau-power {
+  background: rgba(110,240,216,0.08);
+  border-color: rgba(110,240,216,0.28);
+  color: #c8fff5;
+}
+.card-tableau-power-label {
+  color: #6ef0d8;
+  display: block;
+  font-family: "DM Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+.condensed-power-text.tableau-power { color: #6ef0d8; }
+.condensed-power-text.instant-power { color: #ff8f8f; }
+.card-power-text.instant-power {
+  background: rgba(226,74,74,0.14);
+  border-color: rgba(226,74,74,0.42);
+  color: #ff9b9b;
+}
+.card-instant-power-label {
+  color: #ff8f8f;
+  display: block;
+  font-family: "DM Mono", monospace;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+.card-power-text.pirate-bonus-power {
+  background: rgba(168,107,214,0.12);
+  border-color: rgba(168,107,214,0.35);
+  color: #d4a8f8;
+  margin: 0 7px 4px;
+}
+/* Pushes flavor text toward the bottom when cards stretch to equal height */
+.card-spacer {
+  flex: 1;
+  min-height: 0;
+}
+.card-flavor-text {
+  color: rgba(207,196,168,0.6);
+  flex-shrink: 0;
+  font-size: 9.5px;
+  line-height: 1.3;
+  font-style: italic;
+  margin-top: 2px;
+  padding: 0 2px;
+}
+.card-id {
+  /* Now lives inside .card-stripe — hidden when stripe is present */
+  display: none;
+}
+.card-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.card-actions button {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 11px;
+}
+.card-art-btn {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.5);
+  border: none;
+  font-size: 14px;
+  padding: 2px 4px;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+/* ===== Player panels ===== */
+#players-section {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 1100px) {
+  #players-section { grid-template-columns: 1fr; }
+}
+
+.player-panel {
+  background: #232340;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 14px;
+}
+.player-panel.current {
+  border-color: #ffd166;
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.2);
+}
+.player-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.player-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #eaeaea;
+}
+.player-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  align-items: center;
+}
+.player-stats span { color: #ffd166; font-weight: bold; }
+.player-stats span.points { color: #66ddff; }
+
+/* ===== Player progress (components left, ship parts right) ===== */
+.player-progress {
+  background: #1a1a2e;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: stretch;
+}
+.progress-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
+}
+.progress-col-parts {
+  flex: 0 0 auto;
+  border-left: 1px solid #2a2a45;
+  padding-left: 10px;
+}
+.progress-section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666;
+  font-weight: bold;
+  white-space: nowrap;
+}
+.ship-parts-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+/* ===== Compact component entries ===== */
+.components-compact {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.comp-entry {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #232340;
+  border-radius: 7px;
+  padding: 3px 8px;
+  border: 1px solid #333;
+  min-height: 51px;
+}
+.comp-entry.suit-engine     { border-color: rgba(63,185,138,0.4); }
+.comp-entry.suit-weapons    { border-color: rgba(226,92,92,0.4); }
+.comp-entry.suit-navigation { border-color: rgba(228,181,58,0.4); }
+.comp-entry.suit-shield     { border-color: rgba(94,168,227,0.4); }
+.comp-icon { font-size: 15px; line-height: 1; }
+.comp-count-text {
+  font-size: 14px;
+  font-weight: bold;
+  color: #777;
+  white-space: nowrap;
+}
+.comp-count-text.ready { color: #ffd166; }
+.comp-build-btn {
+  font-size: 11px !important;
+  padding: 2px 7px !important;
+  white-space: nowrap;
+}
+/* ===== Pirate token chip ===== */
+.pirate-token-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(160, 60, 255, 0.12);
+  border: 1px solid rgba(180, 80, 255, 0.5);
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 21px;
+  font-weight: bold;
+  color: #bb66ff;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(180, 80, 255, 0.4);
+}
+.ship-part {
+  width: 51px;
+  height: 51px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 27px;
+  border: 2px solid #444;
+}
+.ship-part.empty {
+  border-style: dashed;
+  color: #555;
+  font-size: 21px;
+}
+.ship-part.part-damaged {
+  background: rgba(120,120,120,0.1);
+  border-color: #555;
+  font-size: 21px;
+}
+.ship-part.part-disabled {
+  opacity: 0.45;
+  border-style: dashed;
+  filter: grayscale(0.6);
+}
+.progress-hint {
+  font-size: 9px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+.ship-part.filled.suit-engine     { background: rgba(63,185,138,0.2);  border-color: var(--engine-color); }
+.ship-part.filled.suit-weapons    { background: rgba(226,92,92,0.2);   border-color: var(--weapons-color); }
+.ship-part.filled.suit-navigation { background: rgba(228,181,58,0.2);  border-color: var(--navigation-color); }
+.ship-part.filled.suit-shield     { background: rgba(94,168,227,0.2);  border-color: var(--shield-color); }
+
+.components-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+/* Token group: one per suit */
+.token-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  padding: 4px 7px;
+  border: 1px solid #333;
+  min-width: 60px;
+}
+.token-group.suit-engine     { border-color: rgba(63,185,138,0.35); }
+.token-group.suit-weapons    { border-color: rgba(226,92,92,0.35); }
+.token-group.suit-navigation { border-color: rgba(228,181,58,0.35); }
+.token-group.suit-shield     { border-color: rgba(94,168,227,0.35); }
+
+.token-label { font-size: 13px; opacity: 0.5; }
+
+.token-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  min-width: 16px;
+}
+.token-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-size: 13px;
+  background: #2d2d4a;
+  border: 1px solid #444;
+  line-height: 1;
+}
+.token-chip.ready {
+  animation: pulse 1s ease-in-out infinite;
+  border-color: #ffd166;
+}
+.token-empty { font-size: 11px; color: #444; }
+
+.token-count {
+  font-size: 11px;
+  font-weight: bold;
+  color: #666;
+  margin-left: 2px;
+  white-space: nowrap;
+}
+.token-count.ready { color: #ffd166; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.amplifier-indicator {
+  font-size: 11px;
+  color: #ffd740;
+  font-weight: bold;
+  width: 100%;
+}
+
+.turn-actions {
+  display: flex;
+  gap: 8px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.discard-phase-banner {
+  background: #3a2a00;
+  color: #ffcc44;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  width: 100%;
+  border: 1px solid #664400;
+}
+.card.must-discard {
+  border-color: #ff6666;
+  opacity: 0.9;
+}
+.card.must-discard .card-actions button {
+  background: #6e2a2a;
+  border-color: #8e3a3a;
+}
+
+.trade-mode-banner {
+  background: #3a3a1a;
+  color: #ffd166;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 100%;
+}
+
+.pile { margin-bottom: 10px; }
+.pile-label {
+  font-size: 11px;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+/* ===== Dialog ===== */
+dialog {
+  background: #232340;
+  color: #eaeaea;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 600px;
+  width: 90%;
+}
+dialog::backdrop { background: rgba(0,0,0,0.7); }
+dialog h2 { margin-top: 0; }
+dialog .dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+dialog input[type="file"] {
+  color: #eaeaea;
+  margin: 8px 0;
+  display: block;
+}
+dialog pre {
+  background: #1a1a2e;
+  padding: 10px;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 400px;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.config-row {
+  margin: 12px 0;
+  padding: 10px;
+  background: #1a1a2e;
+  border-radius: 4px;
+}
+.config-row label {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.card-art-prompt {
+  background: #1a1a2e;
+  padding: 10px;
+  border-radius: 4px;
+  font-style: italic;
+  color: #ccc;
+  margin: 10px 0;
+}
+
+/* ===== Steal panel ===== */
+#steal-section { margin-bottom: 12px; }
+
+.steal-panel {
+  background: #3a1a1a;
+  border: 2px solid #8e3a3a;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.steal-panel.pending {
+  background: #1a2a3a;
+  border-color: #3a6a8e;
+}
+.steal-panel-title {
+  font-weight: bold;
+  font-size: 15px;
+  margin-bottom: 10px;
+  color: #ff9999;
+}
+.steal-panel.pending .steal-panel-title { color: #66aadd; }
+.steal-step {
+  font-size: 12px;
+  color: #aaa;
+  margin: 8px 0 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.steal-choices { display: flex; gap: 8px; flex-wrap: wrap; }
+.steal-suit-btn { font-size: 13px; padding: 6px 12px; }
+.steal-suit-btn.steal-active {
+  box-shadow: 0 0 0 2px #ffd166;
+  outline: none;
+}
+.steal-player-btn {
+  background: #2a3a4a;
+  border-color: #3a6a8e;
+  color: #eaeaea;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.steal-player-btn:not(:disabled):hover { background: #3a5a7a; }
+
+/* Steal target player panel highlight */
+.player-panel.steal-target {
+  border-color: #3a6a8e;
+  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.3);
+}
+
+/* Power badges — neutral grey, icons distinguish the type */
+.steal-badge { background: rgba(180,180,180,0.12); color: #aaa; }
+.block-badge { background: rgba(180,180,180,0.12); color: #aaa; }
+
+/* Block-available card highlight */
+.card.block-available {
+  border-color: #42a5f5;
+  box-shadow: 0 0 8px rgba(66,165,245,0.5);
+}
+
+/* Staged card highlight */
+.card.staged {
+  border-color: #ffd166;
+  opacity: 0.9;
+}
+
+/* Newly drawn card highlight */
+.card.newly-drawn {
+  animation: DrawPulse 3s ease-out forwards;
+}
+@keyframes drawPulse {
+  0%   { box-shadow: 0 0 20px 4px gold; border-color: gold; }
+  100% { box-shadow: none; }
+}
+
+/* Staged cards summary row */
+.staged-summary {
+  width: 100%;
+  font-size: 12px;
+  color: #ffd166;
+  background: rgba(255,209,102,0.08);
+  border-radius: 4px;
+  padding: 5px 8px;
+  margin-top: 4px;
+}
+
+/* ===== Flash toast ===== */
+#flash {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  background: #2a5a3a;
+  color: white;
+  padding: 10px 16px;
+  border-radius: 6px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1000;
+  max-width: 300px;
+}
+#flash.show { opacity: 1; }
+
+.card-cost-icons {
+  position: absolute;
+  top: 4px;
+  right: 28px; /* leave room for card-id */
+  font-size: 16px;
+  line-height: 1;
+  background: rgba(0,0,0,0.5);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.card-ability-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 6px 0 4px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.card-ability-icon {
+  font-size: 36px;
+  line-height: 1;
+}
+.card-ability-label {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #aaa;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+/* Sell button styling */
+.card-actions button.sell-btn {
+  background: #3a2a2a;
+  border-color: #6e4a2a;
+  color: #cc9966;
+  font-size: 10px;
+}
+.card-actions button.sell-btn:hover { background: #5a3a2a; }
+
+/* ===== Pirate section ===== */
+.pirate-section {
+  background: var(--pirate-card-bg);
+  border: 1px solid rgba(168,107,214,0.4);
+  border-radius: 8px;
+  padding: 0;
+  margin-top: 16px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.pirate-header {
+  background: rgba(168,107,214,0.18);
+  padding: 8px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--pirate-color);
+  border-bottom: 1px solid rgba(168,107,214,0.3);
+  font-family: "DM Mono", monospace;
+}
+.pirate-body {
+  display: flex;
+  gap: 0;
+}
+.pirate-market {
+  flex: 1 1 auto;
+  width: 0; /* force flex basis so ratio is respected */
+  padding: 12px;
+  border-right: 1px solid #553366;
+  overflow: hidden;
+}
+.pirate-market-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aa77cc;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+.pirate-cards-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+}
+.pirate-empty {
+  color: #665577;
+  font-style: italic;
+  font-size: 13px;
+}
+.pirate-card {
+  background: #221530;
+  border: 1px solid #664488;
+  border-radius: 6px;
+  padding: 10px;
+  min-width: 160px;
+  max-width: 210px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.pirate-card-title {
+  font-weight: bold;
+  font-size: 15px;
+  color: #cc88ff;
+}
+.pirate-card-cost {
+  font-size: 13px;
+  color: #aa77cc;
+}
+.pirate-bonus {
+  font-size: 13px;
+  color: #66cc88;
+  line-height: 1.3;
+}
+.pirate-downside {
+  font-size: 11px;
+  color: #cc6666;
+  line-height: 1.3;
+  font-family: "Space Grotesk", sans-serif;
+  margin-top: 10px;
+}
+.pirate-right {
+  flex: 0 0 170px;
+  width: 170px;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+}
+.pirate-event {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pirate-event-note {
+  font-size: 11px;
+  color: #665577;
+}
+.pirate-junkyard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.junkyard-empty {
+  font-size: 12px;
+  color: #665577;
+  font-style: italic;
+}
+.junkyard-items {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.junkyard-chip {
+  background: #2a2030;
+  border: 1px solid #553366;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  color: #aa77cc;
+}
+.junkyard-chip.junk-card {
+  border-color: #445566;
+  color: #8899bb;
+}
+.junkyard-chip.junk-component {
+  border-color: #446655;
+  color: #88bbaa;
+}
+
+/* ===== Action panels (attack / steal) ===== */
+#action-section { margin-bottom: 12px; }
+
+.action-panel {
+  background: #2a1515;
+  border: 2px solid #8e3a3a;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.action-panel.steal-panel {
+  background: #152a2a;
+  border-color: #3a7a7a;
+}
+.action-panel.waiting-panel {
+  background: #151520;
+  border-color: #3a3a5c;
+  text-align: center;
+}
+.waiting-banner {
+  font-size: 15px;
+  color: #aaa;
+  padding: 8px 0;
+}
+.action-panel.pending {
+  background: #15152a;
+  border-color: #3a3a8e;
+}
+.action-panel-title {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #ff9999;
+}
+.action-panel.steal-panel .action-panel-title { color: #66ddcc; }
+.action-panel.pending .action-panel-title { color: #8888ff; }
+.action-step {
+  font-size: 12px;
+  color: #aaa;
+  margin: 6px 0;
+}
+.action-choices {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.action-suit-btn { font-size: 13px; padding: 6px 12px; }
+.action-suit-btn.action-active { box-shadow: 0 0 0 2px #ffd166; }
+.action-player-btn {
+  background: #2a3a4a;
+  border-color: #3a6a8e;
+  font-size: 13px;
+  padding: 6px 12px;
+}
+.action-player-btn:not(:disabled):hover { background: #3a5a7a; }
+.attack-choices-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 8px;
+}
+.attack-col-label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.attack-none { font-size: 12px; color: #555; font-style: italic; }
+.attack-choice-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
+/* Attack target player panel */
+.player-panel.attack-target {
+  border-color: var(--weapons-color);
+  box-shadow: 0 0 0 2px rgba(239,83,80,0.3);
+}
+
+/* ===== Pirate cards owned (in player panel) ===== */
+.pirate-cards-owned {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  width: 100%;
+}
+.pirate-card-owned {
+  background: #221530;
+  border: 1px solid #664488;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 120px;
+}
+.pirate-owned-title {
+  color: #cc88ff;
+  font-weight: bold;
+}
+.pirate-owned-bonus { color: #66cc88; }
+.pirate-owned-downside { color: #cc6666; }
+
+/* ===== Market row (card market + pool sidebar side by side) ===== */
+#market-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+#market-row .card-market-section {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+.pool-sidebar {
+  flex-shrink: 0;
+  width: 100px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 0;
+}
+.pool-sidebar-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #888;
+  margin-bottom: 2px;
+  font-weight: bold;
+}
+.pool-sb-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #1a1a2e;
+  border-radius: 6px;
+  padding: 4px 7px;
+  border: 1px solid #333;
+}
+.pool-sb-row.suit-engine     { border-color: rgba(76,175,80,0.4); }
+.pool-sb-row.suit-weapons    { border-color: rgba(239,83,80,0.4); }
+.pool-sb-row.suit-navigation { border-color: rgba(255,215,64,0.4); }
+.pool-sb-row.suit-shield     { border-color: rgba(66,165,245,0.4); }
+.pool-sb-icon { font-size: 15px; line-height: 1; }
+.pool-sb-count { font-size: 13px; font-weight: bold; color: #999; }
+
+.ship-part-card { min-height: 220px; }
+.card-title-bar {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.25;
+  padding: 0 2px 6px;
+  margin: 0 0 4px;
+  color: var(--paper);
+  font-family: "Space Grotesk", sans-serif;
+}
+/* Suit bar backgrounds now handled by .card-stripe — these are no-ops */
+.card-suit-bar-engine, .card-suit-bar-weapons, .card-suit-bar-navigation,
+.card-suit-bar-shield, .card-suit-bar-neutral { background: none; }
+
+/* Cost icons: top-right, horizontal row */
+.card-cost-icons {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 16px;
+  line-height: 1;
+  background: rgba(0,0,0,0.4);
+  padding: 2px 4px;
+  border-radius: 3px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1px;
+  z-index: 1;
+}
+
+/* Card art enabled — PNG if present, SVG placeholder fallback */
+.card-art { display: block; }
+
+/* Ability area — slightly smaller to save space */
+.card-ability-area {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 2px;
+  padding: 4px 6px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  border-radius: 0 0 3px 3px;
+}
+.card-ability-icon { font-size: 22px; line-height: 1; }
+.card-ability-label {
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #bbb;
+  text-transform: uppercase;
+}
+
+/* Token chips — bigger */
+.token-chip {
+  width: 28px;
+  height: 28px;
+  font-size: 16px;
+}
+
+/* ===== Action log section ===== */
+.log-section {
+  padding: 10px 14px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+/* Log is now below pirate-section, full width */
+#log-section {
+  max-height: 200px;
+  overflow-y: auto;
+}
+.log-empty {
+  color: #555;
+  font-size: 12px;
+  font-style: italic;
+}
+.log-entry {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: #ccc;
+}
+.log-entry:last-child { border-bottom: none; }
+.log-player {
+  font-weight: bold;
+  color: #ffd166;
+}
+.log-card {
+  font-weight: bold;
+}
+.log-suit-engine     { color: var(--engine-color); }
+.log-suit-weapons    { color: var(--weapons-color); }
+.log-suit-navigation { color: var(--navigation-color); }
+.log-suit-shield     { color: var(--shield-color); }
+.log-suit-neutral    { color: #aaa; }
+.log-action {
+  font-weight: bold;
+  color: #66ddff;
+}
+.log-event {
+  font-weight: bold;
+  color: #cc88ff;
+}
+.log-pirate {
+  font-weight: bold;
+  color: #cc88ff;
+}
+
+/* ===== Last event display in pirate section ===== */
+.last-event-box {
+  background: #1a1030;
+  border: 1px solid #554466;
+  border-radius: 5px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+.last-event-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8866aa;
+  margin-bottom: 3px;
+}
+.last-event-title {
+  font-weight: bold;
+  font-size: 13px;
+  color: #cc88ff;
+  margin-bottom: 3px;
+}
+.last-event-desc {
+  font-size: 11px;
+  color: #aa88bb;
+  line-height: 1.4;
+}
+
+/* ===== Sell mode ===== */
+.sell-mode-banner {
+  background: #2a2010;
+  border: 1px solid #665522;
+  border-radius: 6px;
+  padding: 8px 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+}
+.sell-mode-label {
+  font-size: 12px;
+  color: #ffd166;
+  font-weight: bold;
+  width: 100%;
+}
+.card.sell-selected {
+  border-color: #ffd166;
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.5);
+  background: #2a2510;
+}
+
+/* ===== Ability buttons in turn-actions ===== */
+.ability-btn {
+  font-size: 12px;
+  padding: 5px 8px;
+}
+
+/* ===== Phase UI ===== */
+.phase-label {
+  font-size: 12px;
+  color: #aaa;
+  font-style: italic;
+  flex: 1 1 100%;
+}
+.action-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 4px 6px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  background: #22223a;
+}
+.action-group-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  flex: 1 1 100%;
+  margin-bottom: 2px;
+}
+.action-group-hint {
+  font-size: 11px;
+  color: #666;
+  flex: 1 1 100%;
+  margin-bottom: 2px;
+}
+.phase-tableau-actions {
+  align-items: center;
+  gap: 8px;
+}
+
+/* ===== Junkyard Shop panel ===== */
+.junk-shop-panel { border-color: #a070c0; }
+.junk-shop-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.junk-shop-item {
+  width: auto;
+  min-width: 100px;
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+/* ===== Block section ===== */
+.block-section {
+  padding: 8px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.block-note {
+  font-size: 11px;
+  color: #888;
+  font-style: italic;
+}
+
+/* ===== Built ship parts condensed view ===== */
+.built-parts-section {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.built-part-card {
+  background: #1a2a1a;
+  border: 1px solid rgba(76,175,80,0.4);
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  flex: 1;
+}
+.built-part-card.damaged {
+  background: #1e1e2e;
+  border-color: rgba(120,120,120,0.4);
+}
+.built-part-icon { font-size: 18px; line-height: 1; }
+.built-part-title { font-weight: bold; font-size: 12px; color: #eaeaea; }
+.built-part-status { font-size: 11px; margin-top: 2px; }
+.built-part-status.active-status { color: #66cc88; }
+.built-part-status.damaged-status { color: #aaa; }
+.built-part-desc { font-size: 10px; color: #888; line-height: 1.3; }
+.built-part-repair-hint { font-size: 10px; color: #886644; margin-top: 2px; }
+.built-part-card button { font-size: 11px; padding: 3px 8px; margin-top: 4px; }
+
+/* ===== Junkyard buy section ===== */
+.junkyard-buy {
+  margin-top: 6px;
+}
+.junkyard-buy-label {
+  font-size: 11px;
+  color: #aa77cc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+.junkyard-buy-btns {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.junkyard-buy-btns button {
+  font-size: 11px;
+  padding: 3px 8px;
+}
+
+/* ===== Junkyard item picker ===== */
+.junkyard-pick {
+  margin-top: 8px;
+  background: #1a1030;
+  border: 1px solid #7755aa;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.junkyard-pick-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.junkyard-pick-label {
+  font-size: 11px;
+  color: #cc88ff;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.junkyard-pick-actions {
+  display: flex;
+  gap: 6px;
+}
+.junkyard-pick-actions button {
+  font-size: 11px;
+  padding: 3px 10px;
+}
+.junkyard-pick-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.junkyard-pick-item {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+.junkyard-pick-item.junk-pick-selected {
+  box-shadow: 0 0 0 2px #ffd166;
+  border-color: #ffd166;
+  background: #2a2510;
+  color: #ffd166;
+}
+
+/* ===== Ultrawide layout ===== */
+
+/* Side player columns are hidden by default */
+#players-left, #players-right { display: none; }
+
+/* Toggle applied to <body> by the checkbox */
+body.ultrawide main {
+  max-width: none;
+  padding: 10px 14px;
+}
+body.ultrawide #game-view {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+/* Side columns: 1 share each, min 280px, scroll independently */
+body.ultrawide #players-left,
+body.ultrawide #players-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1 1 0;
+  min-width: 280px;
+  position: sticky;
+  top: 10px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+
+/* Center column: 1.5× share (1:1.5:1) */
+body.ultrawide #center-column {
+  flex: 1.5 1 0;
+  min-width: 0;
+}
+
+/* Normal players grid is hidden — players render into side columns */
+body.ultrawide #players-section {
+  display: none;
+}
+
+/* Full-width player panels inside side columns */
+body.ultrawide .players-side .player-panel {
+  width: 100%;
+}
+
+/* Tighter card rows in narrow side columns */
+body.ultrawide .players-side .card-row {
+  gap: 6px;
+}
+body.ultrawide .players-side .card:not(.card-row .card) {
+  width: 155px;
+}
+body.ultrawide .players-side .card-row .card {
+  width: 221px;
+  height: 397px;
+  font-size: 12px;
+}
+
+/* Market grid stays 4-col in center */
+body.ultrawide .ship-market-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ===== Card Market section ===== */
+.card-market-section {
+  padding: 12px 14px;
+}
+.market-header {
+  font-size: 13px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+.buy-pool-inline {
+  font-size: 13px;
+  color: #ffd166;
+  font-weight: bold;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.card-market-grid {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.market-slot {
+  width: 155px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  background: #2d2d4a;
+  border: 2px solid #444466;
+  border-radius: 6px;
+  padding: 6px;
+  position: relative;
+}
+.market-slot.empty-slot {
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-style: italic;
+  border-style: dashed;
+}
+.market-cost {
+  margin: 4px 0;
+  font-size: 14px;
+  line-height: 1;
+}
+.cost-free {
+  color: #66cc88;
+  font-weight: bold;
+  font-size: 11px;
+}
+.cost-icons {
+  color: #ffd166;
+}
+.market-sell-value {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+}
+.card-benefit-tag {
+  background: rgba(255,209,102,0.12);
+  border: 1px solid rgba(255,209,102,0.3);
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-size: 10px;
+  color: #ffd166;
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+.market-redraw-bar {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+.redraw-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  background: #1e1e2e;
+  color: #aaa;
+  border: 1px solid #444;
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+.redraw-btn:hover { opacity: 1; color: #fff; border-color: #888; }
+
+.buy-phase-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: #2a2010;
+  border: 1px solid #665522;
+  border-radius: 6px;
+}
+.buy-phase-label {
+  font-size: 12px;
+  color: #ffd166;
+  font-weight: bold;
+}
+
+/* ===== Updated card internals ===== */
+.card-sell-icons {
+  font-size: 20px;
+  line-height: 1;
+  padding: 5px 4px 2px;
+  margin-top: auto;
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  min-height: 28px;
+}
+.card-benefit-box {
+  background: rgba(255,209,102,0.08);
+  border: 1px solid rgba(255,209,102,0.25);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 4px 0;
+}
+.card-benefit-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffd166;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 2px;
+}
+.card-benefit-desc {
+  font-size: 10px;
+  color: #bb9944;
+  line-height: 1.3;
+}
+.card.spent-card {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+/* ===== Build buttons row ===== */
+.build-row {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+  width: 100%;
+}
+.build-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  flex: 1;
+  min-width: 80px;
+}
+.build-btn.can-build {
+  font-weight: bold;
+}
+
+/* ===== Tableau ===== */
+.tableau-section {
+  width: 100%;
+  margin-top: 6px;
+}
+.tableau-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #ffd166;
+  margin-bottom: 4px;
+  font-weight: bold;
+}
+.tableau-cards {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.tableau-card {
+  background: rgba(255,209,102,0.08);
+  border: 1px solid rgba(255,209,102,0.3);
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.tableau-card-suit { font-size: 13px; }
+.tableau-card-title { color: #eaeaea; font-weight: bold; }
+.tableau-card-benefit { color: #ffd166; font-size: 10px; }
+
+/* Suit-tinted tableau cards */
+.tableau-card.card-suit-engine     { border-color: rgba(76,175,80,0.4); background: rgba(76,175,80,0.08); }
+.tableau-card.card-suit-weapons    { border-color: rgba(239,83,80,0.4); background: rgba(239,83,80,0.08); }
+.tableau-card.card-suit-navigation { border-color: rgba(255,215,64,0.4); background: rgba(255,215,64,0.08); }
+.tableau-card.card-suit-shield     { border-color: rgba(66,165,245,0.4); background: rgba(66,165,245,0.08); }
+
+/* ===== Updated pirate market cards ===== */
+.pirate-card-suit-engine     { border-color: rgba(76,175,80,0.5); }
+.pirate-card-suit-weapons    { border-color: rgba(239,83,80,0.5); }
+.pirate-card-suit-navigation { border-color: rgba(255,215,64,0.5); }
+.pirate-card-suit-shield     { border-color: rgba(66,165,245,0.5); }
+.pirate-card-suit-badge { margin-bottom: 4px; }
+
+/* ===== Updated owned pirate cards ===== */
+.pirate-card-owned {
+  width: 100%;
+  max-width: none;
+}
+.ship-part-power-box {
+  width: 100%;
+  max-width: none;
+}
+.pirate-owned-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 2px;
+}
+.pirate-owned-suit { font-size: 14px; }
+
+/* ===== Attack panel: 2-column grid ===== */
+.attack-choices-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+/* ===== Card title bar: top margin leaves room for card-id (left) and cost-icons (right) ===== */
+/* (card-title-bar margin handled above) */
+
+/* ===== Free craft mode ===== */
+.free-craft-banner {
+  background: #1a2a1a;
+  border: 1px solid #3a7a3a;
+  border-radius: 6px;
+  padding: 8px 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
+}
+.free-craft-label {
+  font-size: 12px;
+  color: #88cc88;
+  font-weight: bold;
+  width: 100%;
+}
+.free-craft-suit-row {
+  display: flex;
+  gap: 6px;
+}
+.free-craft-suit-active {
+  box-shadow: 0 0 0 2px #ffd166;
+  outline: none;
+}
+
+/* ===== Buy phase counter badge ===== */
+.buy-count-badge {
+  font-size: 11px;
+  color: #aaa;
+  background: rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-weight: bold;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.buy-count-badge.buy-limit-reached {
+  color: #ff8888;
+  background: rgba(239,83,80,0.15);
+}
+
+/* ===== Pirate card cost badge (top-right) ===== */
+.pirate-card {
+  position: relative;
+}
+.pirate-card-cost-badge {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 17px;
+  font-weight: bold;
+  color: #dd99ff;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(180, 80, 255, 0.6);
+  border-radius: 6px;
+  padding: 2px 7px;
+  line-height: 1.2;
+}
+.pirate-card-title {
+  padding-right: 52px; /* leave room for cost badge */
+}
+
+/* ===== Pirate card free ability (bottom strip) ===== */
+.pirate-free-ability {
+  font-size: 11px;
+  font-weight: normal;
+  color: #8899bb;
+  padding: 5px 0 0;
+  margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ===== Tableau visual cards ===== */
+.tableau-cards-visual {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.tableau-card-visual {
+  background: rgba(255,209,102,0.08);
+  border: 1px solid rgba(255,209,102,0.3);
+  border-radius: 6px;
+  padding: 8px 10px;
+  min-width: 130px;
+  max-width: 200px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.tableau-card-visual.card-suit-engine     { border-color: rgba(76,175,80,0.45); background: rgba(76,175,80,0.09); }
+.tableau-card-visual.card-suit-weapons    { border-color: rgba(239,83,80,0.45); background: rgba(239,83,80,0.09); }
+.tableau-card-visual.card-suit-navigation { border-color: rgba(255,215,64,0.45); background: rgba(255,215,64,0.09); }
+.tableau-card-visual.card-suit-shield     { border-color: rgba(66,165,245,0.45); background: rgba(66,165,245,0.09); }
+.tableau-card-name {
+  font-weight: bold;
+  font-size: 12px;
+  color: #ccc;
+}
+.tableau-card-effect-box {
+  background: rgba(255,209,102,0.07);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.tableau-effect-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffd166;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.tableau-effect-desc {
+  font-size: 10px;
+  color: #bb9944;
+  line-height: 1.3;
+  margin-top: 2px;
+}
+
+/* ===== New economy system styles (v34) ===== */
+
+/* Card symbols (scrap/tech) */
+.card-symbols {
+  font-size: 18px;
+  line-height: 1;
+  padding: 5px 4px 2px;
+  margin-top: auto;
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  min-height: 26px;
+  letter-spacing: 1px;
+}
+
+/* Cost tag — sits just below the stripe */
+.card-cost-tag {
+  position: absolute;
+  top: 28px;
+  right: 6px;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  background: rgba(0,0,0,0.35);
+  padding: 2px 6px;
+  border-radius: 3px;
+  z-index: 1;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+/* Card bottom bar — suit badge left, cost right */
+.card-bottom-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding: 4px 4px 2px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+/* Large cost display — bottom right */
+.card-cost-br {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(0,0,0,0.4);
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+/* Pirate part band — suit-colored strip showing part type */
+.pirate-part-band {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 6px;
+  margin: 0 7px 4px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+}
+.pirate-part-band-engine     { background: var(--engine-color); }
+.pirate-part-band-weapons    { background: var(--weapons-color); color: white; }
+.pirate-part-band-navigation { background: var(--navigation-color); }
+.pirate-part-band-shield     { background: var(--shield-color); color: white; }
+
+/* Loose scrap/tech tokens in player header */
+.loose-tokens {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 2px 9px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #ddd;
+  white-space: nowrap;
+}
+
+/* Junkyard sidebar — expanded to show all cards */
+.pool-sidebar {
+  width: 110px;
+}
+.junk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.junk-empty-note {
+  font-size: 11px;
+  color: #555;
+  padding: 4px 0;
+}
+.junk-card-row {
+  border-color: rgba(170,119,204,0.3) !important;
+  overflow: hidden;
+}
+.junk-card-name {
+  font-size: 10px;
+  color: #cc99ee;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Call for Aid panel */
+.action-panel.call-for-aid-panel {
+  background: #1a1a2e;
+  border-color: #5566cc;
+}
+.action-panel.call-for-aid-panel .action-panel-title { color: #99aaff; }
+
+/* Pass panel */
+.action-panel.pass-panel {
+  background: #1a2a1a;
+  border-color: #3a7a3a;
+}
+.action-panel.pass-panel .action-panel-title { color: #88cc88; }
+
+/* Nav panel */
+.action-panel.nav-panel {
+  background: #2a2a10;
+  border-color: #7a7a2a;
+}
+.action-panel.nav-panel .action-panel-title { color: #ffd166; }
+
+/* Nav pick bar */
+.nav-pick-bar {
+  background: #1a2010;
+  border-color: #5a5a22;
+}
+.nav-pick-bar .buy-phase-label { color: #ffd166; }
+
+/* Junkyard pick panel */
+.action-panel.junk-pick-panel {
+  background: #1a1030;
+  border-color: #7755aa;
+}
+.action-panel.junk-pick-panel .action-panel-title { color: #cc88ff; }
+
+/* Junkyard pick row */
+.junk-pick-row {
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.junk-pick-item {
+  background: #232340;
+  border: 2px solid #553399;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 120px;
+}
+.junk-pick-item:hover { background: #2d2d55; }
+.junk-pick-item.junk-pick-selected {
+  box-shadow: 0 0 0 2px #cc88ff;
+  border-color: #cc88ff;
+  background: #2a1540;
+  color: #cc88ff;
+}
+
+/* Defender choice */
+.defender-sacrifice-label {
+  font-size: 11px;
+  color: #888;
+  margin: 8px 0 4px;
+  font-style: italic;
+}
+.defender-cards {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* Wildcard build entry */
+.comp-entry.wild-entry {
+  border-color: rgba(255,209,102,0.4);
+  background: rgba(255,209,102,0.04);
+}
+
+/* Tableau pile label */
+.pile-label strong { color: #ffd166; }
+
+/* Cards played this turn — can still be unplayed */
+.card.played-this-turn {
+  box-shadow: 0 0 0 2px rgba(255,209,102,0.5);
+}
+
+/* ===== Card ID — bottom right ===== */
+.card-id-bottom {
+  position: absolute;
+  bottom: 5px;
+  right: 7px;
+  font-family: "DM Mono", monospace;
+  font-size: 8px;
+  color: rgba(244,234,213,0.3);
+  letter-spacing: 0.05em;
+  pointer-events: none;
+}
+
+/* ===== Tableau suit columns ===== */
+.tableau-suit-cols {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.tableau-suit-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.tableau-suit-col-header {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-align: center;
+  white-space: nowrap;
+  background: rgba(255,255,255,0.04);
+  font-family: "DM Mono", monospace;
+}
+.suit-color-engine     { color: var(--engine-color); }
+.suit-color-weapons    { color: var(--weapons-color); }
+.suit-color-navigation { color: var(--navigation-color); }
+.suit-color-shield     { color: var(--shield-color); }
+
+/* ===== Pirate market cards (use .card base) ===== */
+.pirate-market-card {
+  min-height: 230px;
+  width: 221px;
+}
+.pirate-market-card .card-suit-footer {
+  margin-top: auto;
+}
+.pirate-market-card .card-desc.pirate-downside {
+  margin-top: auto;
+}
+.pirate-market-card .suit-badge.suit-pirate {
+  background: none;
+}
+.pirate-bonus  { color: #66cc88; }
+.pirate-downside { color: #cc7777; }
+.pirate-free-note { color: #8899bb; font-size: 10px; margin-top: auto; }
+
+/* ===== Hand card width ===== */
+.card-row .card {
+  width: 196px;
+  height: 425px;
+  font-size: 15px;
+}
+.card-row .card-title-below {
+  font-size: 12.5px;
+}
+.card-row .card-icon-text {
+  font-size: 18px;
+  padding: 0 6px 4px;
+}
+.card-row .card-cost-pill {
+  display: none;
+}
+.card-row .card-power-text {
+  font-size: 13px;
+}
+.card-row .card-power-label,
+.card-row .card-tableau-power-label,
+.card-row .card-instant-power-label {
+  font-size: 10px;
+}
+.card-row .card-flavor-text {
+  font-size: 11.875px;
+}
+.card-row .suit-badge-mini {
+  font-size: 11.25px;
+}
+.card-row .card-actions button {
+  font-size: 12.5px;
+}
+
+/* ===== Condensed tableau card ===== */
+.condensed-card {
+  width: 120px;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+.condensed-power-text {
+  background: rgba(233,196,106,0.10);
+  border: 1px solid rgba(233,196,106,0.22);
+  border-radius: 4px;
+  color: #ffe29a;
+  font-size: 9px;
+  line-height: 1.2;
+  margin-top: 3px;
+  max-height: 36px;
+  overflow: hidden;
+  padding: 4px 5px;
+}
+.condensed-power-box {
+  height: 18px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 3px;
+  margin: 5px 0 4px;
+  background: rgba(255,255,255,0.02);
+}
+.condensed-card .card-actions {
+  margin-top: 4px;
+}
+.condensed-card .card-actions button {
+  font-size: 10px;
+  padding: 2px 5px;
+}
+
+/* ===== Market: deck pile + card grid side by side ===== */
+.market-content-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.market-content-row .card-market-grid {
+  flex: 1;
+  min-width: 0;
+}
+.card-market-grid .card {
+  flex-shrink: 0;
+  width: 221px;
+}
+.card-market-grid .card-title-below,
+.pirate-market-card .card-title-below {
+  font-size: 13.4px;
+}
+.deck-pile-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.deck-pile-card {
+  width: 120px;
+  min-height: 168px;
+  position: relative;
+  cursor: default;
+}
+/* Stacked shadow on the wrapper when it contains the deck pile */
+.card-holo-wrap:has(.deck-pile-card) {
+  box-shadow:
+    3px 3px 0 1px rgba(0,0,0,0.4),
+    6px 6px 0 2px rgba(0,0,0,0.25);
+}
+.deck-count-badge {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: rgba(244,234,213,0.85);
+  text-shadow: 0 0 12px rgba(233,196,106,0.5);
+  line-height: 1;
+  z-index: 5;
+}
+.deck-pile-label {
+  font-family: "DM Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: rgba(244,234,213,0.35);
+  text-transform: uppercase;
+}
+
+/* ===== Pirate junkyard in pirate-right ===== */
+.pirate-junkyard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.pirate-junkyard-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aa77cc;
+  font-weight: 700;
+  font-family: "DM Mono", monospace;
+  margin-bottom: 4px;
+}
+
+/* ===== Mini pile display (junkyard + destroyed) ===== */
+.mini-pile-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.mini-pile-card {
+  width: 144px;
+  min-height: 200px;
+  position: relative;
+  cursor: default;
+}
+.mini-pile-card .card-logo {
+  font-size: 5px;
+  bottom: 4px;
+}
+.card-holo-wrap:has(.mini-pile-card) {
+  box-shadow: 2px 2px 0 1px rgba(0,0,0,0.4), 4px 4px 0 1px rgba(0,0,0,0.2);
+}
+.pile-count-badge {
+  position: absolute;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 27px;
+  font-weight: 700;
+  color: rgba(244,234,213,0.85);
+  text-shadow: 0 0 10px rgba(233,196,106,0.5);
+  line-height: 1;
+  z-index: 5;
+}
+.card-holo-wrap:has(.mini-pile-card.destroyed-pile) {
+  background: #3a3a3a;
+  box-shadow: none;
+}
+.card-holo-wrap:has(.mini-pile-card.destroyed-pile) .card.hidden-card {
+  background: #222;
+  border-color: #444;
+  opacity: 0.7;
+}
+.card-holo-wrap:has(.mini-pile-card.empty-pile) .card.hidden-card {
+  opacity: 0.35;
+}
+.pile-display-row {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: flex-start;
+}
+.pile-display-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: flex-start;
+  flex: 1;
+}
+
+/* ===== Inactive tableau power text ===== */
+.condensed-power-text.power-inactive {
+  opacity: 0.51;
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(255,255,255,0.1);
+  color: #aaa;
+  font-style: italic;
+}
+
+/* ===== Defender sacrifice inline panel ===== */
+.sacrifice-section {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sacrifice-group-label {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 6px;
+  font-style: italic;
+}
+.sacrifice-btn {
+  text-align: left;
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.sacrifice-source {
+  font-size: 10px;
+  opacity: 0.65;
+  margin-left: 4px;
+}
+
+/* ===== Build power choice panel ===== */
+.build-power-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+}
+.build-power-option {
+  text-align: left;
+  padding: 8px 12px;
+  border-radius: 6px;
+  line-height: 1.3;
+}
+.build-power-option.build-power-selected {
+  box-shadow: 0 0 0 2px #e9c46a;
+  border-color: #e9c46a;
+}
+.build-power-desc {
+  font-size: 11px;
+  opacity: 0.8;
+  margin-top: 2px;
+}
+.build-power-none {
+  background: #2a2a3a;
+  color: #aaa;
+}
+.build-power-none.build-power-selected {
+  color: #e9c46a;
+}
+
+/* ===== Ship part power in damaged section ===== */
+.built-part-power {
+  font-size: 11px;
+  color: #ffe29a;
+  margin: 2px 0;
+}
+
+/* ===== Ship part active power list ===== */
+.ship-part-powers {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.ship-part-power-box {
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 120px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04);
+}
+.ship-part-power-box.suit-engine     { border-color: var(--engine-color);     background: rgba(63,185,138,0.08); }
+.ship-part-power-box.suit-weapons    { border-color: var(--weapons-color);    background: rgba(226,92,92,0.08); }
+.ship-part-power-box.suit-navigation { border-color: var(--navigation-color); background: rgba(228,181,58,0.08); }
+.ship-part-power-box.suit-shield     { border-color: var(--shield-color);     background: rgba(94,168,227,0.08); }
+.ship-part-power-box.power-suspended { opacity: 0.45; }
+.ship-part-power-title {
+  font-weight: bold;
+}
+.ship-part-power-box.suit-engine     .ship-part-power-title { color: var(--engine-color); }
+.ship-part-power-box.suit-weapons    .ship-part-power-title { color: var(--weapons-color); }
+.ship-part-power-box.suit-navigation .ship-part-power-title { color: var(--navigation-color); }
+.ship-part-power-box.suit-shield     .ship-part-power-title { color: var(--shield-color); }
+.ship-part-power-bonus { color: #66cc88; }
+/* legacy row style (kept for damage section) */
+.ship-part-power-row { display: flex; align-items: baseline; gap: 5px; font-size:11px; padding:3px 6px; border-radius:4px; background:rgba(255,255,255,0.04); }
+.ship-part-power-name { font-weight: 600; }
+.ship-part-power-desc { color: #ffe29a; flex: 1; }
+
+/* ===== Steal target grid (mirrors attack-choices-grid) ===== */
+.steal-target-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+.steal-col { display: flex; flex-direction: column; gap: 5px; }
+.steal-blind-note { font-size: 10px; opacity: 0.6; margin-left: 4px; }
