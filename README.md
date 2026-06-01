@@ -2,7 +2,7 @@
 
 **Project**: Browser-based card game (Plain HTML + vanilla JS). You've crash-landed on a strange planet and must rebuild your spaceship before the space pirates capture you and make you run in a space-wheel forever.
 
-Files: `prototype.html`, `js/config.js`, `js/game.js`, `js/render.js`, `js/helpers.js`, `js/art.js`, `js/main.js`, `styles/main.css`. Cache-busted with `?v=62` on all script/CSS links. Preview server runs on port `3457`.
+Files: `prototype.html`, `js/config.js`, `js/game.js`, `js/render.js`, `js/helpers.js`, `js/art.js`, `js/main.js`, `styles/main.css`. Cache-busted with `?v=119` on all script/CSS links. Preview server runs on port `3457`.
 
 ---
 
@@ -10,74 +10,78 @@ Files: `prototype.html`, `js/config.js`, `js/game.js`, `js/render.js`, `js/helpe
 
 Each turn has two sequential phases:
 
-#### 1. Action Phase
+#### 1. Action Phase (2 actions)
 
-**Choose one action:**
-- **🃏 Deploy** — play up to 2 cards from hand to tableau; resources commit immediately
-- **⚡ Steal** — discard an Engine card from hand (or use engine ship part) → pick target → pick suit → defender may block or lose a card of that suit from their tableau
-- **💥 Attack** — same activation → destroy a target's tableau card (goes to junkyard, attacker gains +1🧵 with `attackLoot`) or damage a ship part / disable a pirate part; defender may block
-- **🧭 Sneak** — same activation → pick up to **2 free cards from market** (3 with Coffee Machine) OR up to **3 free cards from junkyard**; after picking, choose which cards to deploy to tableau via multi-select; bonus resources applied on pick if nav bonus ship-part powers are active
-- **Skip** → gain +2⚙️ Scrap and +1🧵 Tech
-- **Build** — spend 3 same-suit tableau cards → complete a ship part; choose which card's upgrade power to embed (or none)
-- **Repair** — select 2 same-suit OR 3 any-suit **hand cards** → restore a damaged ship part (1 any-suit card with Rice Cooker in tableau)
-- **♻️ Salvage** — take up to 3 cards from the junkyard to hand (available anytime; requires Navigation ship part or Marauder's Map pirate card)
-- **🫙 Disable Part** — (Balsamic Vinegar in tableau) target an opponent's ship part to disable it until their next turn
+The active player takes **any 2 actions** in any order (repeats allowed). Each action spends 1 slot; when both are spent the turn automatically advances to Resupply.
 
-**NTL01–04 free-action activation**: Cards with a free ability (Giant Frisbee/BFG/Cute Drone/K-ML) can be **played to tableau** for their resource value, OR **⚡ Activated** by discarding directly from hand — NTL02/03/04 immediately start the Attack/Steal/Sneak without needing a ship part; NTL01 can be discarded by the defender during an incoming attack to enable Block.
+**Available actions:**
 
-**Pirate Actions** (can be taken instead of any other action):
-- **👾 Sell** — select 2 hand cards → send to junkyard → gain 2 👾 (3 👾 with Contraband Hold bonus)
-- **🏴‍☠️ Pirate Attack** (2 👾) → force an opponent to discard one tableau card of a chosen suit to junkyard
-- **🗑️ Junk Shop** (1 👾) → view all junkyard cards, pick up to 2 to take to hand
-- **Buy Pirate Card** from pirate market (3–4 👾 cost)
-- **🔧 Repair Pirate Part** (2 👾) — re-enable a disabled pirate card you own
+- **🃏 Deploy** — play 1 card from hand to tableau; resources (⚙️/🧵/👾) commit immediately. First card each turn gets doubled symbols with Coffee Machine (echo). Cards played this turn can be unplayed (reverses resources, restores action slot).
+- **⚡ Steal** — discard an Engine card (or wild) from hand → pick target player → pick the exact tableau card to steal → defender may Block or Accept
+- **💥 Attack** — discard a Weapons card (or wild) → pick target → pick exact tableau card to destroy, or destroy a pirate token, or damage a ship/pirate part → defender may Block or Accept
+- **🧭 Sneak** — discard a Navigation card (or wild) → choose: **Take from Market** (up to 2 free cards, market refills immediately after each pick) OR **Search Junkyard** (3 random cards shown, keep up to 2). Cards go to hand; use remaining actions to deploy normally.
+- **🛡️ Build** — click ▶ Build on the upgrade panel (requires 3 same-suit tableau cards, or 2 with A.E.G.I.S.) → pay 1 hand card (any suit) as build cost → choose power → ship part completed. 1 tableau card becomes the upgrade (goes to usedCards), the others + the hand card go to junkyard.
+- **🔧 Repair** — restore a damaged or disabled ship/pirate part. Cost: 1 same-suit card from hand or tableau. If repair penalty is active: 1 same-suit card + 1 any-suit card (both from hand or tableau). Free with Rice Cooker.
+- **⚙️ Salvage** — choose: +2 ⚙️ Scrap OR +1 🧵 Tech
+- **👾 Sell** — select 1 card from hand or tableau → send to junkyard → gain 1 👾. Liquidator: sell any number at once, 1 👾 per card.
+- **🏴‍☠️ Raid** (2 👾) — pick target → pick a suit column → target must discard 1 card of that suit from their tableau to junkyard. No block option.
+- **🗑️ Sabotage** (1 👾, Power Bank only) — click a market card to send it to the junkyard
+- **🫙 Disable Part** — (Balsamic Vinegar in tableau) target an opponent's undamaged ship part; it's disabled until their next turn start
+- **🃏 Buy Pirate Card** — buy a card from the Pirate Market for 👾 cost (uses 1 action slot)
 
-#### 2. Buy Phase
+**NTL01–04 free-action activation**: Cards with a free ability (Giant Frisbee/BFG/Cute Drone/K-ML) can be **▶ Played** to tableau for resources, OR **⚡ Activated** by discarding from hand — NTL02/03/04 start Attack/Steal/Sneak without needing a ship part (costs 1 action slot); NTL01 (Giant Frisbee) can be discarded by the *defender* during an incoming attack to enable Block.
+
+**✓ Done → Resupply**: player can skip remaining actions early at any time.
+
+#### 2. Resupply Phase
+
 - Spend ⚙️/🧵 to buy **up to 2 cards** from the card market; purchased slots refill immediately
-- Click **"Done Buying"** to end turn and pass to next player
+- **🗑️ Junk Shop** (2 👾, mutually exclusive with market buys): view 3 random junkyard cards, take up to 2. Cancelling refunds the 2 👾.
+- Click **✓ Done (end turn)** to pass to the next player
 
-**Win condition**: be the first player to have **3 active ship parts**. Both regular undamaged ship parts and undamaged pirate parts count. Damaged/disabled parts do not count.
+**Win condition**: be the first player to have **3 active ship parts**. Both undamaged regular ship parts and undamaged pirate parts count.
 
 ---
 
 ### Resource System
 
 - **⚙️ Scrap** and **🧵 Tech** are stored as integers on each player (`p.scrap`, `p.tech`)
-- Resources accumulate permanently — they do NOT reset between turns or on card removal
-- Spending happens in Buy Phase; tableau cards stay put until used to build, stolen, attacked, or used as ability activation cost
-
----
-
-### Ship Part Activation Cost
-
-When you own an undamaged ship part (or enabled pirate part) of a suit, using that suit's ability (Steal/Attack/Sneak) gives you a **choice** of how to pay:
-
-1. **Discard a matching hand card** (normal cost) — part is unaffected
-2. **Damage your ship part** — no hand card needed; repair later with the Repair action
-3. **Disable your pirate part** — no hand card needed; effects suspended until repaired for 2 👾
-
-If you have no part and no matching hand card, the ability is unavailable.
+- Resources accumulate permanently — they do NOT reset between turns
+- Playing a card to tableau grants its resources immediately; unplaying it reverses them
+- Spending happens in Resupply Phase
 
 ---
 
 ### Suit Abilities
 
-| Suit | Icon | Ability | Cost |
-|------|------|---------|------|
-| Engine | ⚡ | **Steal** a tableau card from an opponent | Discard engine card OR damage engine part |
-| Weapons | 💥 | **Attack** — destroy/damage opponent's tableau or ship part | Discard weapons card OR damage weapons part |
-| Navigation | 🧭 | **Sneak** — take free cards from market or junkyard | Discard nav card OR damage nav part |
-| Shield | 🛡️ | **Block** a steal or attack | Discard shield card OR damage shield part (defender only) |
+| Suit | Icon | Ability | Activation cost |
+|------|------|---------|-----------------|
+| Engine | ⚡ | **Steal** a specific tableau card from an opponent | Discard engine/wild card from hand |
+| Weapons | 💥 | **Attack** — destroy a specific card, token, or damage a part | Discard weapons/wild card from hand |
+| Navigation | 🧭 | **Sneak** — take free cards from market or junkyard | Discard nav/wild card from hand |
+| Shield | 🛡️ | **Block** a steal or attack (defender only, reactive) | Discard shield/wild card from hand |
+
+Wild cards (🌈) count for any suit activation. Ability buttons are enabled whenever you hold a matching or wild card and have the ship part built.
 
 ---
 
 ### Steal / Attack Defender Flow
 
-- **Steal**: attacker picks target → picks suit column → defender can **block** (discard shield card / damage shield part) or **sacrifice** a card of that suit (goes to attacker's hand)
-- **Attack (tableau)**: same flow but sacrificed card goes to junkyard (or attacker's hand with `attackLoot` bonus)
-- **Attack (ship part)**: defender accepts damage or blocks; damaged part stays (repair later)
-- **Attack (pirate part)**: defender accepts disable or blocks; disabled pirate part suspends both upside and downside until repaired (2 👾)
-- **Pirate Attack Targeted Strike**: defender picks which card of that suit goes to junkyard — no block option
+- **Attacker picks the exact card** to steal/destroy from the defender's tableau (no suit guessing)
+- **Defender's response**: Block (discard shield/wild or use NTL01) or Accept
+- **Hand-targeted steal/attack**: attacker picks "steal from hand" / "attack hand card" — defender then picks which card to give up
+- **Ship/pirate part attack**: defender Blocks or accepts damage; no card sacrifice
+- **Raid**: no block option — defender picks which card of the chosen suit to discard
+
+---
+
+### Build Flow
+
+1. Click **▶ Build** next to a suit in the Upgrade Options panel (requires enough same-suit tableau cards)
+2. Click **💸 Pay** on any hand card (the build cost; goes to junkyard)
+3. If >3 same-suit tableau cards: select exactly 3 to spend
+4. If any card has an upgrade power: choose which power to embed (or none)
+5. Ship part is created; 1 tableau card → usedCards, rest → junkyard
 
 ---
 
@@ -89,6 +93,7 @@ If you have no part and no matching hand card, the ability is unavailable.
 | 💥 | Weapons suit |
 | 🧭 | Navigation suit |
 | 🛡️ | Shield suit |
+| 🌈 | Wild card (any suit) |
 | ⚙️ | Scrap resource |
 | 🧵 | Tech resource |
 | 👾 | Pirate tokens |
@@ -104,125 +109,90 @@ If you have no part and no matching hand card, the ability is unavailable.
   shipParts:[{suit, title, power?, damaged?, disabled?}],
   usedCards:[],          // cards spent on build — personal pile, not reshuffled
   pirateTokens:0,
-  pirateCards:[{upside, downside, disabled?}] }
+  pirateCards:[{upside, downside, damaged?}] }
 ```
 
 **Game state** (global `game`):
 ```js
 { players:[], currentPlayerIndex:0,
-  deck:[], discard:[], cardMarket:[5 slots],
+  deck:[], cardMarket:[5 slots],
   junkyard:[{type:'card', card},...],
-  pirateMarket:[4 slots], log:[] }
+  removed:[],            // destroyed cards (removed from game)
+  pirateMarket:[4 slots], pirateDeck:[], log:[] }
 ```
 
 **Turn phase** (module-level):
 ```js
 currentPhase: 'action' | 'buy'
+actionsRemaining: 0 | 1 | 2   // decremented by spendAction(); 0 auto-advances to buy
 ```
 
-**Pending states** (module-level globals):
+**Key pending states** (module-level globals):
 ```js
 pendingSteal, pendingAttack, pendingDefenderChoice,
-pendingPartActivation,   // { suit, action, phase:'choose'|'keepOrDiscard', ... }
-pendingDamagedShipPart,
 pendingJunkyardPick, pendingJunkyardShop,
-pendingBuyPhase, pendingPass, pendingRepair,
-pendingCallForAid, pendingDiscard,
-pendingAbilityPick,        // { mode:'steal'|'attack'|'sneak'|'block', candidates, targetIdx }
-pendingBuildSelect,        // { suit, selectedIds, required }
-pendingSneakTableauSelect, // { instanceIds:[], selectedIds:Set } — multi-select deploy after sneak picks
+pendingSneakChoice,      // { mode:null|'market', activationCard, marketPicksRemaining? }
+pendingSneakJunkyard,    // { offeredCards:[...], selectedIds:[], activationCard }
+pendingBuyPhase, pendingRepair, pendingCallForAid, pendingDiscard,
+pendingAbilityPick,      // { mode, candidates, targetIdx? }
+pendingBuildSelect,      // { suit, needed, suitCards, selectedIds, handCardId }
+pendingBuildPowerChoice, // { suit, cardIds, cards, powerCardInstanceId, handCardId }
+pendingBuildHandCost,    // { suit } — waiting for inline Pay click on a hand card
+pendingSalvageChoice,    // boolean — showing +2 Scrap / +1 Tech choice
 sellMode, sellSelection
-playedThisTurn   // Set of instanceIds played this turn
-sneakPickedIds   // accumulates all sneak picks (market + junkyard) before multi-select
-sneakTableauPlayQueue  // processes confirmed sneak tableau plays sequentially
+playedThisTurn           // Set of instanceIds played this turn (for echo bonus + unplay)
 ```
 
 `anyBlocking()` returns true if any interactive pending state is active — gates most actions.
-
-`requireActionPhase()` — guard used by all action starters; also blocks if `anyBlocking()`.
+`requireActionPhase()` — guard used by all action starters; also blocks if `anyBlocking()` or `actionsRemaining <= 0`.
 
 ---
 
 ### Cards
 
-32 card definitions across 4 suits (engine/weapons/navigation/shield), quantity 1 each. Each card has:
+Card definitions in `config.js` across 4 suits (engine/weapons/navigation/shield) plus neutral. Each card has:
 ```js
 { id, title, suit, description, quantity,
   symbols: { scrap:N, tech:N },   // resources gained when played to tableau
   cost:    { scrap:N, tech:N },   // cost to buy from market
-  power?:  { effect, value, resource?, text } } // optional tableau power
+  power?:  { type, effect, value, resource?, text } }
 ```
 
-Ship-part upgrade powers (type `'upgrade'`) are embedded at build time and active while the part is undamaged and not disabled. Neutral/wild tableau powers (type `'tableau'`) are active while the card sits in the player's tableau.
-
-Supported power effects:
-- `turnStartResource` — gain scrap/tech each turn start (resource field selects which)
-- `tokenPerTurn` — gain +1 👾 each turn start
-- `pirateOnSteal` — extra 👾 per successful steal
-- `drawOnAttack` — draw 1 card after each successful attack
-- `attackLoot` — gain +1🧵 after each successful attack
-- `pirateTokenOnBuild` — gain +1 👾 each time a ship part is built or a pirate card is bought
-- `pirateTokenOnBlock` — gain +1 👾 each time you successfully Block
-- `drawOnBlock` — draw 1 card each time you successfully Block
-- `blockStealBack` — when you block a steal, take 1 👾 from the attacker
-- `sellBonus` — selling cards now gives 3 👾
-- `extraDraw` — draw 1 extra card at turn start
-- `navBonus` — Sneak gives bonus resource (resource field: `scrap`/`tech`/`pirate`)
-- `junkyardSalvage` — Sneak junkyard mode gives 3 picks instead of default
-- `sneakFreeMarket` — Sneak market mode gives 1 extra free pick
-- `disablePart` — action: disable an opponent's ship part until their next turn
-- `repairCheap` — repair any damaged part for just 1 card (any suit)
-- `buildFast` — (unused) would reduce build cost by 1 card
-- `defensiveSteal` — engine cards also accepted as Sneak payment
-- `defensiveAttack` — weapons cards also accepted as Block payment
-- `offensiveSneak` — navigation cards also accepted as Steal payment
-- `offensiveBlock` — shield cards also accepted as Attack payment
-- `freeSteal` — can use Steal without an Engine ship part (tableau or hand discard)
-- `freeAttack` — can use Attack without a Weapons ship part
-- `freeSneak` — can use Sneak without a Navigation ship part
-- `freeBlock` — can use Block without a Shield ship part
+Power types:
+- `'upgrade'` — embedded in ship part at build time; active while part is undamaged and not disabled
+- `'tableau'` — active while the card sits in the player's tableau
+- `'instant'` — activated by discarding from hand via `useNeutralFreeAction()`
 
 ---
 
 ### Pirate Cards (permanent ship parts bought with 👾)
 
 Each pirate card has:
-- **Upside**: a bonus effect active while enabled, tied to one suit
-- **Downside**: a penalty always active (revealed when bought), tied to no suit
-- **Disabled state**: both upside and downside suspended; repair for 2 👾
-
-Undamaged (enabled) pirate cards count toward the **3-part win condition**. Disabled pirate cards do not count.
+- **Upside**: a bonus effect active while not damaged, tied to one suit (counts toward win condition)
+- **Downside**: a penalty always active (revealed on purchase)
+- **Damaged state**: both upside and downside suspended; repair with 1 same-suit card (action)
 
 ---
 
-### Build & Repair Rules (from `config.rules`)
+### Repair Rules
 
-```js
-{ startingHandSize:4, handSizeLimit:5,
-  shipPartsToWin:3,
-  buildSameSuitCount:3,    // 3 same-suit tableau cards → build part (same-suit only)
-  passScrap:2, passTech:1,
-  repairSameSuitCount:2,   // 2 same-suit hand cards → repair damaged part
-  repairAnySuitCount:3,    // 3 any-suit hand cards → repair damaged part
-                           // repairCheap effect (Rice Cooker) allows 1 any-suit card instead
-  sellTokens:2,            // pirate tokens gained from selling cards
-  sellBonusTokens:3,       // pirate tokens when sellBonus effect is active
-  PIRATE_ATTACK_COST:2,    // pirate tokens to launch a Pirate Attack
-}
-```
+- **Base cost**: 1 same-suit card from hand or tableau
+- **Repair Penalty** (downside active): 1 same-suit card + 1 any-suit card (both from hand or tableau)
+- **Rice Cooker** (tableau power): repair is free — no cards needed
+- Applies to both regular ship parts (damaged or disabled) and pirate parts (damaged)
 
 ---
 
 ### Junkyard
 
-Fully visible sidebar showing all discarded cards. Cards enter the junkyard when: sold, attacked (tableau destroyed), ability cards used for Steal/Attack/Sneak/Block, used in Repair, end-of-turn discards, or Pirate Attack Targeted Strike. Cards used to **build** go to each player's personal **used-cards pile** (`usedCards[]`) and are never reshuffled.
+Fully visible sidebar showing all discarded cards. Cards enter the junkyard when: sold, destroyed by Attack, used as ability activation cost, used for Repair, or discarded at hand limit. Cards used to **build** go to each player's personal `usedCards[]` pile and are never reshuffled.
 
 When the deck runs out, 50% of junkyard cards are randomly reshuffled back into the deck.
 
 ---
 
-### Hand & Tableau Limits
+### Hand & Deploy Limits
 
 - **Hand limit**: 5 cards (end-of-turn discard to junkyard if over limit; penalty effects can reduce it)
-- **Deploy action**: max 2 cards played to tableau per turn
-- Tableau has no size limit; cards stay until used to build, stolen, attacked, or used as ability activation
+- **Deploy**: each Deploy action plays 1 card to tableau; cards played this turn can be unplayed (returns card to hand, reverses resources, restores the action slot)
+- Tableau has no size limit

@@ -10,8 +10,9 @@ function isUltrawide() { return document.body.classList.contains('ultrawide'); }
 function renderSymbols(symbols) {
   if (!symbols) return '';
   let s='';
-  if (symbols.scrap) for(let i=0;i<symbols.scrap;i++) s+=SCRAP_ICON;
-  if (symbols.tech)  for(let i=0;i<symbols.tech;i++)  s+=TECH_ICON;
+  if (symbols.scrap)  for(let i=0;i<symbols.scrap;i++)  s+=SCRAP_ICON;
+  if (symbols.tech)   for(let i=0;i<symbols.tech;i++)   s+=TECH_ICON;
+  if (symbols.pirate) for(let i=0;i<symbols.pirate;i++) s+=icon('pirate');
   return s;
 }
 
@@ -51,13 +52,7 @@ function renderCardPower(card, condensed=false, inactive=false) {
   return `<div class="card-power-text"><span class="card-power-label">On Upgrade</span> ${text}</div>`;
 }
 
-function renderResourcesWithPending(p, isCurrent) {
-  if (isCurrent && playedThisTurn.size > 0) {
-    const {scrap:ps, tech:pt} = getPendingResources();
-    const scrapStr = ps > 0 ? `${SCRAP_ICON}${p.scrap}<span class="pending-res">+${ps}</span>` : `${SCRAP_ICON}${p.scrap}`;
-    const techStr  = pt > 0 ? `${TECH_ICON}${p.tech}<span class="pending-res">+${pt}</span>`  : `${TECH_ICON}${p.tech}`;
-    return `<span class="loose-tokens">${scrapStr} ${techStr}</span>`;
-  }
+function renderResourcesWithPending(p) {
   return `<span class="loose-tokens">${SCRAP_ICON}${p.scrap} ${TECH_ICON}${p.tech}</span>`;
 }
 
@@ -67,7 +62,7 @@ function renderGame() {
   // never via startGame(), so we handle the toggle here unconditionally.
   document.getElementById('setup-view').hidden = true;
   document.getElementById('game-view').hidden   = false;
-  const phaseLabel = currentPhase==='production' ? '⚙️ Production' : currentPhase==='buy' ? '🛒 Resupply' : '▶ Action';
+  const phaseLabel = currentPhase==='buy' ? '🛒 Resupply' : `▶ Action (${actionsRemaining}/2)`;
   document.getElementById('status-bar').innerHTML = `
     <div class="turn-indicator">&#9654; ${escape(currentPlayer().name)}'s turn</div>
     <div class="phase-indicator">${phaseLabel}</div>
@@ -107,13 +102,10 @@ function renderCardMarket() {
   const bought = inBuy ? (pendingBuyPhase.cardsBought||0) : 0;
   const atBuyLimit = inBuy && bought >= 2;
 
-  const bfxMarket = inBuy ? getBonusEffects(game.currentPlayerIndex) : null;
-  const hasFreeCard = bfxMarket?.sneakFreeMarket && !pendingBuyPhase?.freeCardUsed;
   let html = `<div class="market-header">&#127981; Card Market`;
   if (inBuy) {
     html += ` &mdash; <span class="buy-pool-inline">${SCRAP_ICON}${p.scrap} ${TECH_ICON}${p.tech} available</span>`;
     html += ` <span class="buy-count-badge${atBuyLimit?' buy-limit-reached':''}">${bought}/2 bought</span>`;
-    if (hasFreeCard) html += ` <span class="buy-count-badge" style="background:#4a7;color:#fff;">☕ 1 free card available</span>`;
   }
   html += `</div><div class="market-content-row"><div class="deck-pile-wrapper">
     ${renderHiddenCard(`<div class="deck-count-badge">${game.deck.length}</div>`,'deck-pile-card')}
@@ -121,21 +113,25 @@ function renderCardMarket() {
   </div><div class="card-market-grid">`;
 
   const isSneakMarket = !!(pendingSneakChoice && pendingSneakChoice.mode==='market' && !pendingSneakPlay);
+  const isSabotageMode = !!pendingSabotageMode && _isMyTurn;
 
   game.cardMarket.forEach((card, idx) => {
     if (!card) { html += `<div class="market-slot empty-slot"><span>Empty</span></div>`; return; }
     const costStr = renderCostCompact(card.cost);
 
     let actions;
-    if (isSneakMarket && _isMyTurn) {
+    if (isSabotageMode) {
+      actions = [{label:'🗑️ Junk this', fn:`sabotagePick(${idx})`, primary:true, danger:true}];
+    } else if (isSneakMarket && _isMyTurn) {
       actions = [{label:'&#9670; Take (free)', fn:`sneakPickMarketCard(${idx})`, primary:true}];
-    } else if (inBuy && _isMyTurn && !atBuyLimit && !pendingBuyPhase.junkyardUsed) {
+    } else if (inBuy && _isMyTurn && !atBuyLimit && !pendingBuyPhase.junkyardUsed && !p.marketBlockedThisTurn) {
       const dfxBuy=getPenaltyEffects(game.currentPlayerIndex);
       const effS=(card.cost.scrap||0)+((card.cost.scrap||0)>0?(dfxBuy.scrapPremium||0):0);
       const effT=(card.cost.tech||0)+((card.cost.tech||0)>0?(dfxBuy.techPremium||0):0);
-      const canAfford = hasFreeCard || (effS<=p.scrap && effT<=p.tech);
-      const label = hasFreeCard ? `☕ Take free` : `Buy (${costStr})`;
-      actions = [{label, fn:`buyFromMarket(${idx})`, primary:canAfford, disabled:!canAfford}];
+      const canAfford = effS<=p.scrap && effT<=p.tech;
+      actions = [{label:`Buy (${costStr})`, fn:`buyFromMarket(${idx})`, primary:canAfford, disabled:!canAfford}];
+    } else if (inBuy && _isMyTurn && p.marketBlockedThisTurn) {
+      actions = [{label:'Market blocked (downside)', disabled:true}];
     } else if (inBuy && (atBuyLimit || pendingBuyPhase.junkyardUsed)) {
       actions = [{label:'Limit reached', disabled:true}];
     } else {
@@ -150,21 +146,20 @@ function renderCardMarket() {
   </div>`;
 
   if (inBuy) {
-    const repairedBadge = pendingBuyPhase.repaired ? ` <span class="buy-count-badge" style="background:#5a8;color:#fff;">&#8617; Repaired</span>` : '';
     const junkyardBadge = pendingBuyPhase.junkyardUsed ? ` <span class="buy-count-badge" style="background:#76522a;color:#fff;">🗑️ Junk Shop used</span>` : '';
     if (_isMyTurn) {
       const dfxBuy = getPenaltyEffects(game.currentPlayerIndex);
       const hasJunkCards = game.junkyard.some(j=>j.type==='card');
       const canShopJunk = !pendingBuyPhase.junkyardUsed && pendingBuyPhase.cardsBought===0
-        && p.pirateTokens>=1 && hasJunkCards && !dfxBuy.noJunkyardPick;
+        && p.pirateTokens>=2 && hasJunkCards && !dfxBuy.noJunkyardPick;
       html += `<div class="buy-phase-bar">
-        <span class="buy-phase-label">&#128178; Resupply Phase — buy up to 2 cards${repairedBadge}${junkyardBadge} (${SCRAP_ICON}${p.scrap} ${TECH_ICON}${p.tech} available)</span>
-        ${canShopJunk ? `<button onclick="startJunkyardShop()">🗑️ Junk Shop (1 ${icon('pirate')})</button>` : ''}
+        <span class="buy-phase-label">&#128178; Resupply Phase — buy up to 2 cards${junkyardBadge} (${SCRAP_ICON}${p.scrap} ${TECH_ICON}${p.tech} available)</span>
+        ${canShopJunk ? `<button onclick="startJunkyardShop()">🗑️ Junk Shop (2 ${icon('pirate')})</button>` : ''}
         <button class="primary" onclick="endBuyPhase()">&#10003; Done (end turn)</button>
       </div>`;
     } else {
       html += `<div class="buy-phase-bar">
-        <span class="buy-phase-label">&#128178; ${escape(currentPlayer().name)} is in Resupply Phase${repairedBadge}${junkyardBadge}</span>
+        <span class="buy-phase-label">&#128178; ${escape(currentPlayer().name)} is in Resupply Phase${junkyardBadge}</span>
       </div>`;
     }
   }
@@ -173,6 +168,12 @@ function renderCardMarket() {
     html += `<div class="buy-phase-bar nav-pick-bar">
       <span class="buy-phase-label">&#9670; Sneak — pick ${remaining} more free card${remaining!==1?'s':''} from market</span>
       <button onclick="cancelSneak()">&#10007; Cancel</button>
+    </div>`;
+  }
+  if (isSabotageMode) {
+    html += `<div class="buy-phase-bar nav-pick-bar">
+      <span class="buy-phase-label">🗑️ Sabotage — click a market card to send it to the junkyard (costs 1 ${icon('pirate')})</span>
+      <button onclick="cancelSabotage()">&#10007; Cancel</button>
     </div>`;
   }
   return html;
@@ -271,7 +272,7 @@ function renderActionPanel() {
     const cancelLabel = pendingWildSuitChoice.fromSneak ? '&#8594; Keep in hand' : '&#10007; Cancel';
     return `<div class="action-panel wild-panel">
       <div class="action-panel-title">🌈 ${cardName} — choose a suit column</div>
-      <div class="action-step">This card will permanently join that suit's tableau column and count toward building it.</div>
+      <div class="action-step">This card will permanently join that suit's tableau column and count toward upgrading it.</div>
       <div class="action-choices" style="margin-top:8px;">
         ${SUITS.map(s=>`<button class="suit-btn-${s}" onclick="confirmWildSuitChoice('${s}')">${SUIT_ICONS[s]||''} ${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('')}
       </div>
@@ -281,42 +282,43 @@ function renderActionPanel() {
     </div>`;
   }
 
-  // ── Sneak play prompt — offer to play sneak-drawn card to tableau ──────────
-  if (pendingSneakTableauSelect) {
-    const p=currentPlayer();
-    const {instanceIds, selectedIds}=pendingSneakTableauSelect;
-    const cards=instanceIds.map(id=>p.hand.find(c=>c.instanceId===id)).filter(Boolean);
+  // ── Sneak choice — market or junkyard ─────────────────────────────────────
+  if (pendingSneakChoice && pendingSneakChoice.mode === null) {
+    return `<div class="action-panel nav-panel">
+      <div class="action-panel-title">${icon('nav')} Sneak — choose:</div>
+      <div class="action-choices" style="margin-top:8px;">
+        <button class="primary suit-btn-navigation" onclick="selectSneakMarket()">📡 Take from Market <span style="opacity:.7;">(up to 2 cards)</span></button>
+        <button class="suit-btn-navigation" onclick="selectSneakJunkyard()">🗑️ Search Junkyard <span style="opacity:.7;">(draw 3, keep up to 2)</span></button>
+      </div>
+      <button onclick="cancelSneak()" style="margin-top:8px;">&#10007; Cancel</button>
+    </div>`;
+  }
+
+  // ── Sneak junkyard pick ─────────────────────────────────────────────────────
+  if (pendingSneakJunkyard) {
+    const {offeredCards, selectedIds}=pendingSneakJunkyard;
     let html=`<div class="action-panel nav-panel">
-      <div class="action-panel-title">${icon('nav')} Sneak — play to tableau?</div>
-      <div class="action-step">Select which cards to play to your tableau now (gaining their resources). Unselected cards stay in hand.</div>
-      <div class="action-cards">`;
-    cards.forEach(card=>{
-      const sel=selectedIds.has(card.instanceId);
-      html+=renderCard(card,[{label:sel?'&#10003; Selected':'Select', fn:`toggleSneakTableauCard(${card.instanceId})`, primary:sel}]);
-    });
+      <div class="action-panel-title">${icon('nav')} Sneak — Junkyard (pick up to 2 cards):</div>
+      <div class="action-choices junk-pick-row">`;
+    if (offeredCards.length===0) {
+      html+=`<div class="attack-none">No cards in junkyard</div>`;
+    } else {
+      offeredCards.forEach((card,idx)=>{
+        const isSel=selectedIds.includes(idx);
+        const canSel=isSel||selectedIds.length<2;
+        html+=`<button class="junk-pick-item card card-suit-${card.suit}${isSel?' junk-pick-selected':''}" onclick="toggleSneakJunkyardCard(${idx})" ${canSel?'':'disabled'}>
+          ${isSel?'&#10003; ':''}${SUIT_ICONS[card.suit]||''} ${escape(card.title)}
+          <div class="card-symbols">${renderSymbols(card.symbols)}</div>
+        </button>`;
+      });
+    }
     html+=`</div>
       <div class="action-choices" style="margin-top:8px;">
-        <button class="primary" onclick="confirmSneakTableauSelect()">&#9654; Confirm${selectedIds.size>0?' (play '+selectedIds.size+')':''}</button>
-        <button onclick="cancelSneakTableauSelect()">&#8594; Keep all in hand</button>
+        <button class="primary" onclick="confirmSneakJunkyard()">&#10003; Keep ${selectedIds.length} card${selectedIds.length!==1?'s':''}</button>
+        <button onclick="cancelSneakJunkyard()">&#10007; Cancel Sneak</button>
       </div>
     </div>`;
     return html;
-  }
-
-  if (pendingSneakPlay) {
-    const p=currentPlayer();
-    const card=p.hand.find(c=>c.instanceId===pendingSneakPlay.instanceId);
-    if (card) {
-      return `<div class="action-panel nav-panel">
-        <div class="action-panel-title">${icon('nav')} Play ${escape(card.title)} to tableau?</div>
-        <div class="action-step">You may play this junkyard-picked card to your tableau now, or keep it in hand.</div>
-        <div class="action-choices" style="margin-top:8px;">
-          <button class="primary suit-btn-${card.suit}" onclick="sneakPlayCardToTableau()">&#9654; Play to tableau (gain ${renderSymbols(card.symbols)})</button>
-          <button onclick="sneakKeepInHand()">&#8594; Keep in hand</button>
-        </div>
-      </div>`;
-    }
-    sneakKeepInHand(); return '';
   }
 
   // ── Build power choice ──────────────────────────────────────────────────────
@@ -329,6 +331,7 @@ function renderActionPanel() {
       <div class="action-panel-title">🚀 ${escape(SHIP_PART_NAMES[suit]||suit)} — choose a power for this part:</div>
       <div class="action-step">Select one card's power to activate when this part is complete, or choose none.</div>
       <div class="build-power-choices">`;
+    const cardsWithoutPower = cards.filter(c=>!c.power);
     cardsWithPower.forEach(card => {
       const isSel = selected === card.instanceId;
       html += `<button class="build-power-option suit-btn-${card.suit}${isSel?' build-power-selected':''}" onclick="selectBuildPower(${card.instanceId})">
@@ -337,12 +340,15 @@ function renderActionPanel() {
       </button>`;
     });
     const noSel = selected === null;
-    html += `<button class="build-power-option build-power-none${noSel?' build-power-selected':''}" onclick="selectBuildPower(null)">
-      ${noSel?'&#10003; ':''}No power — build without a bonus
-    </button>`;
+    cardsWithoutPower.forEach(card => {
+      html += `<button class="build-power-option build-power-none${noSel?' build-power-selected':''}" onclick="selectBuildPower(null)">
+        ${noSel?'&#10003; ':''}${SUIT_ICONS[card.suit]} <strong>${escape(card.title)}</strong>
+        <div class="build-power-desc">No bonus</div>
+      </button>`;
+    });
     html += `</div>
       <div class="action-choices" style="margin-top:8px;">
-        <button class="primary" onclick="confirmBuildPowerChoice()" ${confirmed?'':'disabled'}>&#9654; Build ${escape(SUIT_NAMES[suit])} Part</button>
+        <button class="primary" onclick="confirmBuildPowerChoice()" ${confirmed?'':'disabled'}>&#9654; Upgrade ${escape(SUIT_NAMES[suit])} Part</button>
         <button onclick="cancelBuildPowerChoice()">&#10007; Cancel</button>
       </div>
     </div>`;
@@ -364,11 +370,16 @@ function renderActionPanel() {
         </div>
       </div>`;
     }
-    const rSame=config.rules.repairSameSuitCount||1, rAny=config.rules.repairAnySuitCount||2;
-    const cards=selectedCards.map(id=>p.tableau.find(c=>c.instanceId===id)).filter(Boolean);
-    const allSameSuit=cards.every(c=>c.suit===suit||c.suit==='wild');
-    const isValid=(allSameSuit&&cards.length===rSame)||(cards.length===rAny);
-    const instrText=`Select ${rSame} ${SUIT_ICONS[suit]} same-suit card from <strong>tableau</strong> &mdash; OR &mdash; ${rAny} any-suit cards from your <strong>hand</strong>, then confirm.`;
+
+    const penaltyExtra=p.repairPenaltyPending?1:0;
+    const cards=selectedCards.map(id=>p.tableau.find(c=>c.instanceId===id)||p.hand.find(c=>c.instanceId===id)).filter(Boolean);
+    const sameSuitCards=cards.filter(c=>c.suit===suit||c.suit==='wild');
+    const isValid=penaltyExtra>0
+      ? cards.length===2 && sameSuitCards.length>=1
+      : cards.length===1 && sameSuitCards.length===1;
+    const instrText=penaltyExtra>0
+      ? `Select 1 ${SUIT_ICONS[suit]} ${SUIT_NAMES[suit]||suit} card <strong>+</strong> 1 any-suit card (hand or tableau) <span style="color:#f88;">⚠️ Repair Penalty</span>`
+      : `Select 1 ${SUIT_ICONS[suit]} ${SUIT_NAMES[suit]||suit} card from hand or tableau.`;
     return `<div class="action-panel repair-panel">
       <div class="action-panel-title">🔧 Repair ${titleIcon} ${escape(SHIP_PART_NAMES[suit]||suit)}</div>
       <div class="action-step">${instrText}</div>
@@ -402,8 +413,8 @@ function renderActionPanel() {
     const {suit, needed, suitCards, selectedIds} = pendingBuildSelect;
     const ready = selectedIds.length === needed;
     return `<div class="action-panel build-select-panel">
-      <div class="action-panel-title">🚀 Build ${escape(SUIT_NAMES[suit]||suit)} — pick ${needed} cards:</div>
-      <div class="action-step">You have ${suitCards.length} ${SUIT_ICONS[suit]} cards. Select exactly ${needed} to use for building.</div>
+      <div class="action-panel-title">🚀 Upgrade ${escape(SUIT_NAMES[suit]||suit)} — pick ${needed} cards:</div>
+      <div class="action-step">You have ${suitCards.length} ${SUIT_ICONS[suit]} cards. Select exactly ${needed} to use for upgrading.</div>
       <div class="action-step">Selected: ${selectedIds.length}/${needed}${ready?' ✓':''}</div>
       <div class="action-choices" style="margin-top:8px;">
         <button class="primary" onclick="confirmBuildSelect()" ${ready?'':'disabled'}>&#9654; Confirm Selection</button>
@@ -516,11 +527,27 @@ function renderActionPanel() {
       </div>`;
     }
 
-    const {handTarget} = pendingDefenderChoice;
+    const {handTarget, specificCardId} = pendingDefenderChoice;
     const isSteal = mode==='steal';
     const action = isSteal ? 'steal' : 'attack';
+    const canBribe = defBfxR.bribe && target.pirateTokens >= 2;
+
+    // Specific card targeted — no defender choice for which card, just accept or block
+    if (specificCardId && !handTarget) {
+      const targetedCard = target.tableau.find(c=>c.instanceId===specificCardId);
+      const verb = isSteal ? 'stolen by' : 'destroyed by';
+      return `<div class="action-panel ${isSteal?'steal':'attack'}-panel pending">
+        <div class="action-panel-title">${isSteal?icon('engine'):icon('weapons')} ${escape(attacker.name)} targets <strong>${escape(targetedCard?.title||'a card')}</strong> — it will be ${verb} ${escape(attacker.name)}</div>
+        <div class="action-step">Pass device to ${escape(target.name)}:</div>
+        <div class="action-choices" style="margin-top:8px;">
+          ${blockBtns()}
+          ${canBribe ? `<button class="suit-btn-navigation" onclick="useBribe()">💰 Bribe — redirect (2 ${icon('pirate')})</button>` : ''}
+          <button class="danger" onclick="defenderAccept()">&#10003; Accept</button>
+        </div>
+      </div>`;
+    }
+
     const vulnerable = dfx.stealVulnerable && isSteal;
-    const dest = isSteal ? "attacker's hand" : 'junkyard';
     const titleSuit = suit ? `${SUIT_ICONS[suit]} ` : '✋ ';
     const giveUpNote = suit
       ? `Give up a ${SUIT_NAMES[suit]||suit} card from tableau (click it below)`
@@ -529,7 +556,10 @@ function renderActionPanel() {
     return `<div class="action-panel ${isSteal?'steal':'attack'}-panel pending">
       <div class="action-panel-title">${isSteal?icon('engine'):icon('weapons')} ${escape(attacker.name)} ${action}s ${titleSuit}from ${escape(target.name)}!</div>
       <div class="action-step">Pass device to ${escape(target.name)}:${vulnerable?' (stealVulnerable — attacker will choose for you)':''}</div>
-      <div class="action-choices" style="margin-top:8px;">${blockBtns()}</div>
+      <div class="action-choices" style="margin-top:8px;">
+        ${blockBtns()}
+        ${canBribe ? `<button class="suit-btn-navigation" onclick="useBribe()">💰 Bribe — redirect (2 ${icon('pirate')})</button>` : ''}
+      </div>
       <div class="action-step" style="margin-top:6px;color:#aaa;">${giveUpNote}</div>
     </div>`;
   }
@@ -566,32 +596,78 @@ function renderActionPanel() {
   }
 
 
-  // ── Sneak choice ─────────────────────────────────────────────────────────────
-  if (pendingSneakChoice && pendingSneakChoice.mode===null) {
-    const hasJunk=game.junkyard.some(i=>i.type==='card');
-    const bfx=getBonusEffects(game.currentPlayerIndex);
-    const marketPicks=2+(bfx.sneakFreeMarket?1:0);
-    const bonusHints=[];
-    if (bfx.navBonusScrap)  bonusHints.push(`+${bfx.navBonusScrap} ⚙️`);
-    if (bfx.navBonusTech)   bonusHints.push(`+${bfx.navBonusTech} 🧵`);
-    if (bfx.navBonusPirate) bonusHints.push(`+${bfx.navBonusPirate} 👾`);
-    const bonusLine = bonusHints.length ? `<div class="action-step" style="color:#8cf;">Nav scan bonus: ${bonusHints.join(' ')} applied on pick</div>` : '';
-    return `<div class="action-panel nav-panel">
-      <div class="action-panel-title">${icon('nav')} Sneak — choose:</div>
-      ${bonusLine}
-      <div class="action-choices">
-        <button class="primary" onclick="selectSneakMode('market')">&#9670; Pick up to ${marketPicks} free card${marketPicks!==1?'s':''} from market</button>
-        <button ${hasJunk?'':'disabled'} onclick="selectSneakMode('junkyard')" title="${hasJunk?'':'Junkyard is empty'}">&#128465; See 4 random, pick up to 2 from junkyard${hasJunk?'':' (empty)'}${bfx.sneakFreeMarket?' ☕+1🛒':''}</button>
-        <button onclick="cancelSneak()">&#10007; Cancel</button>
+  // ── Scavenger — take destroyed card for 1 token ────────────────────────────
+  if (pendingScavenger) {
+    const {card, candidates} = pendingScavenger;
+    const takerIdx = candidates[0];
+    const taker = game.players[takerIdx];
+    return `<div class="action-panel scavenger-panel">
+      <div class="action-panel-title">🦝 Scavenger — take <strong>${escape(card.title)}</strong> for 1 ${icon('pirate')}?</div>
+      <div class="action-step">${escape(taker.name)}: ${icon('pirate')} ${taker.pirateTokens} available</div>
+      <div class="action-choices" style="margin-top:8px;">
+        <button class="primary" onclick="confirmScavenge()">&#10003; Scavenge (1 ${icon('pirate')})</button>
+        <button onclick="skipScavenge()">&#10007; Skip</button>
       </div>
+    </div>`;
+  }
+
+  // ── Double Agent — assign downside to opponent ──────────────────────────────
+  if (pendingDoubleAgent) {
+    const {slot} = pendingDoubleAgent;
+    const down = slot.downside;
+    return `<div class="action-panel double-agent-panel">
+      <div class="action-panel-title">🕵️ Double Agent — give downside to an opponent?</div>
+      <div class="action-step">Downside: <strong>${escape(down?.title||'?')}</strong> — ${escape(down?.downsideDesc||'')}</div>
+      <div class="action-step" style="margin-top:8px;">Pick an opponent to receive the downside, or keep it yourself:</div>
+      <div class="action-choices" style="margin-top:6px;">
+        ${game.players.map((pl,i)=>i===game.currentPlayerIndex?'':`<button class="action-player-btn" onclick="confirmDoubleAgent(${i})">${escape(pl.name)}</button>`).join('')}
+      </div>
+      <button onclick="cancelDoubleAgent()" style="margin-top:8px;">&#10007; Keep downside myself</button>
+    </div>`;
+  }
+
+  // ── Second Chance — use another ability? ────────────────────────────────────
+  if (pendingSecondChance) {
+    return `<div class="action-panel second-chance-panel">
+      <div class="action-panel-title">🎱 Second Chance — use another ability?</div>
+      <div class="action-step">You may immediately use one more ability (different from <strong>${escape(pendingSecondChance.firstAbility)}</strong>).</div>
+      <div class="action-choices" style="margin-top:8px;">
+        <button class="primary" onclick="useSecondChance()">&#9654; Use Second Ability</button>
+        <button onclick="skipSecondChance()">&#10007; Skip — end turn</button>
+      </div>
+    </div>`;
+  }
+
+  // ── Bribe — redirect incoming attack to another player ─────────────────────
+  if (pendingBribeTarget) {
+    const {savedChoice} = pendingBribeTarget;
+    return `<div class="action-panel bribe-panel">
+      <div class="action-panel-title">💰 Bribe — redirect attack to which player?</div>
+      <div class="action-step">Choose a new target to receive the incoming ${savedChoice.mode}:</div>
+      <div class="action-choices" style="margin-top:8px;">
+        ${game.players.map((pl,i)=>{
+          if(i===pendingBribeTarget?.savedChoice?.targetIdx) return '';
+          if(i===pendingBribeTarget?.savedChoice?.attackerIdx) return '';
+          return `<button class="action-player-btn" onclick="confirmBribeTarget(${i})">${escape(pl.name)}</button>`;
+        }).join('')}
+      </div>
+      <button onclick="cancelBribe()" style="margin-top:8px;">&#10007; Cancel Bribe (keep tokens)</button>
     </div>`;
   }
 
   // ── Raid: pick target ─────────────────────────────────────────────
   if (pendingCallForAid && pendingCallForAid.mode==='attack' && pendingCallForAid.targetIdx===null) {
+    const bfxRaid = getBonusEffects(game.currentPlayerIndex);
+    const raidP = currentPlayer();
+    const canCorsair = bfxRaid.corsair && raidP.pirateTokens >= RAID_COST + 1;
     let html = `<div class="action-panel call-for-aid-panel">
-      <div class="action-panel-title">🏴‍☠️ Raid — pick a target:</div>
-      <div class="action-choices">`;
+      <div class="action-panel-title">🏴‍☠️ Raid — pick a target:</div>`;
+    if (canCorsair) {
+      html += `<div class="action-step" style="color:#fc9;">⚡ <strong>Corsair</strong> available — raid all opponents at once for ${RAID_COST+1} ${icon('pirate')}:</div>
+      <div class="action-choices"><button class="primary" onclick="startCorsairRaid()">⚡ Corsair Raid — all opponents (${RAID_COST+1} ${icon('pirate')})</button></div>
+      <div class="action-step" style="margin-top:6px;color:#aaa;">Or pick one target for a regular Raid:</div>`;
+    }
+    html += `<div class="action-choices">`;
     game.players.forEach((p,idx) => {
       if (idx===game.currentPlayerIndex) return;
       const hasSomething = p.tableau.length>0;
@@ -638,24 +714,25 @@ function renderActionPanel() {
     return html;
   }
 
-  // ── Steal: pick suit ────────────────────────────────────────────────────────
+  // ── Steal: pick specific card ───────────────────────────────────────────────
   if (pendingSteal && pendingSteal.targetIdx!==null) {
     const stealer = game.players[pendingSteal.stealerIdx];
     const target  = game.players[pendingSteal.targetIdx];
-    const suitCounts = {};
-    SUITS.forEach(s=>{ suitCounts[s]=target.tableau.filter(c=>c.suit===s).length; });
     const hasHand = target.hand.length > 0;
     const hasTokens = target.pirateTokens > 0;
     let html = `<div class="action-panel steal-panel">
-      <div class="action-panel-title">${icon('engine')} Steal from ${escape(target.name)} — pick a target:</div>
+      <div class="action-panel-title">${icon('engine')} Steal from ${escape(target.name)} — pick a card:</div>
       <div class="steal-target-grid">
-        <div class="steal-col"><div class="attack-col-label">Steal a suit (from tableau)</div>`;
-    SUITS.forEach(suit => {
-      const n = suitCounts[suit];
-      html += `<button class="attack-choice-btn suit-btn-${suit}" onclick="selectStealSuit('${suit}')" ${n>0?'':'disabled'}>
-        ${SUIT_ICONS[suit]} ${SUIT_NAMES[suit]} (${n})
-      </button>`;
-    });
+        <div class="steal-col"><div class="attack-col-label">Steal from tableau</div>`;
+    if (target.tableau.length === 0) {
+      html += `<div class="attack-none">No tableau cards</div>`;
+    } else {
+      target.tableau.forEach(card => {
+        html += `<button class="attack-choice-btn suit-btn-${card.suit}" onclick="selectStealCard(${card.instanceId})">
+          ${SUIT_ICONS[card.suit]||''} ${escape(card.title)}
+        </button>`;
+      });
+    }
     html += `</div><div class="steal-col"><div class="attack-col-label">Other options</div>`;
     if (target.tableau.length === 0) {
       html += `<button class="attack-choice-btn" onclick="selectStealHand()" ${hasHand?'':'disabled'}>
@@ -691,32 +768,26 @@ function renderActionPanel() {
     return `<div class="action-panel waiting-panel"><div class="waiting-banner">⏳ Waiting for <strong>${escape(currentPlayer().name)}</strong> to finish their turn…</div></div>`;
   }
 
-  // ── Production phase panel ──────────────────────────────────────────────────
-  if (currentPhase==='production' && !anyBlocking() && !pendingDiscard) {
-    const p = currentPlayer();
-    const dfx = getPenaltyEffects(game.currentPlayerIndex);
-    const bfx = getBonusEffects(game.currentPlayerIndex);
-    const buildCost = Math.max(1,(config.rules.buildSameSuitCount||3)+(dfx.buildCostMod||0)-(bfx.buildFast?1:0));
-    let buildBtns = '';
-    SUITS.forEach(suit => {
-      const alreadyHasRegular      = p.shipParts.some(sp=>sp.suit===suit&&!sp.damaged&&!sp.disabled);
-      const alreadyHasPirateActive = (p.pirateCards||[]).some(pc=>pc.upside.suit===suit&&!pc.damaged);
-      if (alreadyHasRegular||alreadyHasPirateActive) return;
-      const count = p.tableau.filter(c=>c.suit===suit||(c.suit==='wild'&&c.assignedSuit===suit)).length;
-      if (count>=buildCost) {
-        buildBtns += `<button class="primary suit-btn-${suit}" onclick="buildFromTableau('${suit}')">${SUIT_ICONS[suit]} Build ${SUIT_NAMES[suit]} (${count} cards)</button>`;
-      }
-    });
-    const pirateNote = game.pirateMarket.some(s=>s) ? `<div class="action-step" style="color:#aaa;">Or buy a ship part from the Pirate Market below.</div>` : '';
-    return `<div class="action-panel production-panel">
-      <div class="action-panel-title">⚙️ Production Phase</div>
-      ${buildBtns
-        ? `<div class="action-step">You have complete set${buildBtns.split('<button').length>2?'s':''} ready to build:</div>
-           <div class="action-choices" style="margin-top:8px;">${buildBtns}</div>`
-        : `<div class="action-step" style="color:#aaa;">No complete sets to build yet.</div>`}
-      ${pirateNote}
+  // ── Build hand cost — prompt shown via inline buttons on hand cards ─────────
+  if (pendingBuildHandCost) {
+    const {suit} = pendingBuildHandCost;
+    return `<div class="action-panel build-select-panel">
+      <div class="action-panel-title">🚀 Build ${escape(SUIT_NAMES[suit]||suit)} — pay 1 hand card (→ junkyard):</div>
+      <div class="action-step">Click <strong>💸 Pay</strong> on any card in your hand below.</div>
       <div class="action-choices" style="margin-top:8px;">
-        <button class="primary" onclick="skipProduction()">&#9654; Skip &#8594; Action Phase</button>
+        <button onclick="cancelBuildHandCost()">&#10007; Cancel</button>
+      </div>
+    </div>`;
+  }
+
+  // ── Salvage choice — scrap or tech ─────────────────────────────────────────
+  if (pendingSalvageChoice) {
+    return `<div class="action-panel action-panel-mini">
+      <div class="action-panel-title">⚙️ Salvage — what do you gain?</div>
+      <div class="action-choices" style="margin-top:8px;">
+        <button class="primary" onclick="doSalvage('scrap')">+2 ${SCRAP_ICON} Scrap</button>
+        <button class="primary" onclick="doSalvage('tech')">+1 ${TECH_ICON} Tech</button>
+        <button onclick="cancelSalvage()">&#10007; Cancel</button>
       </div>
     </div>`;
   }
@@ -735,16 +806,15 @@ function renderActionPanel() {
       <div class="attack-choices-grid">
         <div class="attack-col">
           <div class="attack-col-label">${icon('weapons')} Destroy a Card</div>`;
-    let hasTableau=false;
-    SUITS.forEach(suit=>{
-      const n=suitCounts[suit];
-      if(n>0){hasTableau=true; html+=`<button class="attack-choice-btn suit-btn-${suit}" onclick="selectAttackSuit('${suit}')">${SUIT_ICONS[suit]} ${SUIT_NAMES[suit]} (${n} in tableau)</button>`;}
-    });
-    if(!hasTableau) html+=`<div class="attack-none">No tableau cards</div>`;
     if (target.tableau.length === 0) {
+      html+=`<div class="attack-none">No tableau cards</div>`;
       html+=`<button class="attack-choice-btn" onclick="selectAttackHand()" ${hasHand?'':'disabled'}>
         ✋ Attack hand card <span class="steal-blind-note">(defender picks)</span>
       </button>`;
+    } else {
+      target.tableau.forEach(card=>{
+        html+=`<button class="attack-choice-btn suit-btn-${card.suit}" onclick="selectAttackCard(${card.instanceId})">${SUIT_ICONS[card.suit]||''} ${escape(card.title)}</button>`;
+      });
     }
     html+=`<button class="attack-choice-btn" onclick="attackPirateToken()" ${hasTokens?'':'disabled'}>
       💀 Destroy 1 pirate token ${hasTokens?`(${target.pirateTokens} available)`:'(none)'}
@@ -760,7 +830,7 @@ function renderActionPanel() {
         html+=`<button class="attack-choice-btn suit-btn-${part.suit}" onclick="attackShipPart(${actualIdx})">${SUIT_ICONS[part.suit]} ${escape(part.title)}</button>`;
       });
       (target.pirateCards||[]).forEach((pc,pcIdx)=>{
-        if (pc.damaged) return;
+        if (!pc.upside || pc.damaged) return;
         html+=`<button class="attack-choice-btn suit-btn-${pc.upside.suit}" onclick="attackShipPart(-${pcIdx+1000})">${icon('pirate')} ${escape(pc.upside.title)}</button>`;
       });
     }
@@ -776,12 +846,12 @@ function renderActionPanel() {
 function renderPirateSection() {
   const p = currentPlayer();
   const anyPending = anyBlocking();
-  const isActive = currentPhase==='production'&&!anyPending&&!pendingDiscard&&!sellMode;
+  const isActive = currentPhase==='action'&&!anyPending&&!pendingDiscard&&!sellMode&&actionsRemaining>0;
 
   let html = `<div class="pirate-header">${icon('pirate')} Space Pirates</div><div class="pirate-body">`;
 
   const pirateDeckCount = (game.pirateDeck||[]).length;
-  html += `<div class="pirate-market"><div class="pirate-market-label">Pirate Market — buy a permanent ship part</div><div class="pirate-cards-row">`;
+  html += `<div class="pirate-market"><div class="pirate-market-label">Pirate Market — Smuggle a permanent ship part</div><div class="pirate-cards-row">`;
   html += `<div class="deck-pile-wrapper">
     <div class="card-holo-wrap rarity-uncommon suit-pirate">
       <div class="card hidden-card deck-pile-card">
@@ -800,7 +870,7 @@ function renderPirateSection() {
     const up = slot.upside;
     const canBuy = isActive && p.pirateTokens>=up.pirateTokenCost
       && !p.shipParts.some(sp=>sp.suit===up.suit)
-      && !(p.pirateCards||[]).some(pc=>pc.upside.suit===up.suit);
+      && !(p.pirateCards||[]).some(pc=>pc.upside?.suit===up.suit);
     html += `<div class="card-holo-wrap rarity-uncommon suit-pirate">
     <div class="card card-suit-pirate pirate-market-card">
       <div class="card-stripe card-stripe-pirate"></div>
@@ -812,14 +882,14 @@ function renderPirateSection() {
       <div class="card-power-text pirate-bonus-power">${escape(up.bonusDesc)}</div>
       <div class="card-desc pirate-downside">&#10067; Downside revealed on purchase</div>
       <div class="card-actions">
-        <button class="${canBuy?'primary':''}" onclick="buyPirateCard(${idx})" ${canBuy?'':'disabled'}>Buy (${up.pirateTokenCost} ${icon('pirate')})</button>
+        <button class="${canBuy?'primary':''}" onclick="buyPirateCard(${idx})" ${canBuy?'':'disabled'}>Smuggle (${up.pirateTokenCost} ${icon('pirate')})</button>
       </div>
       <div class="card-suit-footer"><span class="suit-badge suit-pirate">${icon('pirate')} Pirate</span></div>
     </div></div>`;
   });
   if (!anySlots && pirateDeckCount===0) html += `<div class="pirate-empty">All pirate parts purchased this game</div>`;
   html += `</div>`;
-  if (anySlots) html += `<div class="market-redraw-bar"><button class="redraw-btn" onclick="redrawPirateMarket()" title="Replace pirate upsides with new ones (downsides stay)">🔄 Redraw Pirates</button></div>`;
+  if (anySlots || game.pirateDeck.length>0) html += `<div class="market-redraw-bar"><button class="redraw-btn" onclick="redrawPirateMarket()" title="Replace visible pirate cards with new ones from the deck">🔄 Redraw Pirates</button></div>`;
   html += `</div>`;
 
   const bfx=getBonusEffects(game.currentPlayerIndex);
@@ -850,7 +920,7 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
   const isDefenderTarget = pendingDefenderChoice && idx===pendingDefenderChoice.targetIdx;
   const anyPending = anyBlocking();
   const activeCount = countActiveShipParts(idx);
-  const limit = (config.rules.handSizeLimit||4)+(dfx.handLimitMod||0)+(bfx.handLimitUp||0);
+  const limit = (config.rules.handSizeLimit||4)+(dfx.handLimitMod||0);
 
   let html = `<div class="player-panel${isCurrent?' current':''}${isDefenderTarget?' attack-target':''}">`;
 
@@ -859,7 +929,7 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
     <h3>${isCurrent?'&#9654; ':''}${escape(p.name)}${isCurrent?(isMyPanel?' (your turn)':' (their turn)'):''}${isDefenderTarget?' &#127919; must respond!':''}</h3>
     <div class="player-stats">
       <span class="pirate-token-chip">${icon('pirate')} ${p.pirateTokens}</span>
-      ${renderResourcesWithPending(p, isCurrent)}
+      ${renderResourcesWithPending(p)}
       <div>${activeCount}/${partsNeeded} parts</div>
     </div>
   </div>`;
@@ -872,7 +942,7 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
   html += `<div class="ship-parts-row">`;
   SUITS.forEach(suit => {
     const reg = p.shipParts.find(sp=>sp.suit===suit);
-    const pir = (p.pirateCards||[]).find(pc=>pc.upside.suit===suit);
+    const pir = (p.pirateCards||[]).find(pc=>pc.upside?.suit===suit);
     const title = pir?pir.upside.title : reg?reg.title:'';
     const powerTip = reg&&reg.power ? ` | Power: ${reg.power.text}` : '';
     if (pir) {
@@ -894,52 +964,49 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
   html += `</div>`;
   html += `<div class="progress-hint">Craft/Buy any 3 to win</div></div>`;
 
-  const canRepair   = isCurrent&&currentPhase==='buy'&&!!pendingBuyPhase&&!pendingBuyPhase.repaired&&!pendingRepair;
+  const canRepair   = isCurrent&&isMyPanel&&currentPhase==='action'&&!anyPending&&!pendingDiscard&&!sellMode&&actionsRemaining>0&&!pendingRepair;
   const buildCost = Math.max(1, (config.rules.buildSameSuitCount||3)+(dfx.buildCostMod||0)-(bfx.buildFast?1:0));
 
-  html += `<div class="progress-col"><div class="progress-section-label">Build Options</div><div class="components-compact">`;
+  html += `<div class="progress-col"><div class="progress-section-label">Upgrade Options</div><div class="components-compact">`;
   SUITS.forEach(suit => {
     const alreadyHasRegular      = p.shipParts.some(sp=>sp.suit===suit&&!sp.damaged&&!sp.disabled);
-    const alreadyHasPirateActive = (p.pirateCards||[]).some(pc=>pc.upside.suit===suit&&!pc.damaged);
-    const hasDamagedPirate       = (p.pirateCards||[]).some(pc=>pc.upside.suit===suit&&pc.damaged);
+    const alreadyHasPirateActive = (p.pirateCards||[]).some(pc=>pc.upside?.suit===suit&&!pc.damaged);
+    const hasDamagedPirate       = (p.pirateCards||[]).some(pc=>pc.upside?.suit===suit&&pc.damaged);
     const hasBrokenRegular       = p.shipParts.some(sp=>sp.suit===suit&&(sp.damaged||sp.disabled));
     const count = p.tableau.filter(c=>c.suit===suit||(c.suit==='wild'&&c.assignedSuit===suit)).length;
     const ready = count>=buildCost && !alreadyHasRegular && !alreadyHasPirateActive && !hasDamagedPirate;
     if (alreadyHasRegular||alreadyHasPirateActive) return;
     html += `<div class="comp-entry suit-${suit}"><span class="comp-icon">${SUIT_ICONS[suit]}</span>`;
     if (hasDamagedPirate && isCurrent && isMyPanel && canRepair) {
-      const rSame=config.rules.repairSameSuitCount||1, rAny=config.rules.repairAnySuitCount||2;
       const bfxRepair=getBonusEffects(game.currentPlayerIndex);
-      const repairTip=bfxRepair.repairCheap?'Free':`${rSame} same-suit or ${rAny} any-suit hand cards`;
+      const repairTip=bfxRepair.repairCheap?'Free':'1 same-suit card (hand or tableau)';
       html += `<button class="comp-build-btn suit-btn-${suit}" onclick="startPirateRepair('${suit}')" title="${repairTip}">&#8617; Repair ${icon('pirate')}</button>`;
     } else if (hasBrokenRegular && isCurrent && isMyPanel && canRepair) {
-      const rSame=config.rules.repairSameSuitCount||1, rAny=config.rules.repairAnySuitCount||2;
       const bfxRepair=getBonusEffects(game.currentPlayerIndex);
-      const repairTip=bfxRepair.repairCheap?'Free':`${rSame} same-suit or ${rAny} any-suit hand cards`;
+      const repairTip=bfxRepair.repairCheap?'Free':'1 same-suit card (hand or tableau)';
       html += `<button class="comp-build-btn suit-btn-${suit}" onclick="startRepair('${suit}')" title="${repairTip}">&#8617; Repair</button>`;
     } else if (ready) {
-      if (isCurrent && isMyPanel && currentPhase==='production' && !anyPending && !pendingDiscard) {
+      if (isCurrent && isMyPanel && currentPhase==='action' && !anyPending && !pendingDiscard && actionsRemaining>0) {
         html += `<button class="comp-build-btn suit-btn-${suit}" onclick="buildFromTableau('${suit}')">&#9654; Build</button>`;
       } else {
-        html += `<span class="comp-count-text ready" title="Build during your next Production Phase">&#9654; Ready!</span>`;
+        html += `<span class="comp-count-text ready" title="Build during your action phase">&#9654; Ready!</span>`;
       }
     } else {
       html += `<span class="comp-count-text">${count}/${buildCost}</span>`;
     }
     html += `</div>`;
   });
-  html += `</div><div class="progress-hint">Complete ${buildCost} same-suit in tableau — build during Production Phase</div></div>`;
+  html += `</div><div class="progress-hint">Complete ${buildCost} same-suit in tableau — build during your action phase</div></div>`;
   html += `</div>`; // close player-progress
 
-  // Active ship part powers (regular parts with powers chosen at build)
-  const builtWithPower = p.shipParts.filter(sp=>sp.power);
-  if (builtWithPower.length > 0) {
+  // Active ship part powers (all regular parts)
+  if (p.shipParts.length > 0) {
     html += `<div class="ship-part-powers">`;
-    builtWithPower.forEach(sp => {
+    p.shipParts.forEach(sp => {
       const suspended = sp.damaged || sp.disabled;
       html += `<div class="ship-part-power-box suit-${sp.suit}${suspended?' power-suspended':''}">
         <span class="ship-part-power-title">${SUIT_ICONS[sp.suit]} ${escape(sp.title)}${sp.damaged?' <em>(damaged)</em>':sp.disabled?' <em>(disabled)</em>':''}</span>
-        <span class="ship-part-power-bonus">${escape(sp.power.text)}</span>
+        ${sp.power ? `<span class="ship-part-power-bonus">${escape(sp.power.text)}</span>` : ''}
       </div>`;
     });
     html += `</div>`;
@@ -949,12 +1016,21 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
   if ((p.pirateCards||[]).length>0) {
     html += `<div class="pirate-cards-owned">`;
     p.pirateCards.forEach((pc)=>{
+      if (!pc.upside) {
+        // doubleAgent gave us only the downside
+        html += `<div class="pirate-card-owned suit-shield">
+          <span class="pirate-owned-suit">${icon('pirate')}</span>
+          <span class="pirate-owned-title">${icon('pirate')} Pirate Curse <em>(Double Agent)</em></span>
+          ${pc.downside?`<span class="pirate-owned-downside">&#9888; ${escape(pc.downside.downsideDesc)}</span>`:''}
+        </div>`;
+        return;
+      }
       const dmg = pc.damaged;
       html += `<div class="pirate-card-owned suit-${pc.upside.suit}${dmg?' pirate-disabled':''}">
         <span class="pirate-owned-suit">${SUIT_ICONS[pc.upside.suit]}</span>
         <span class="pirate-owned-title">${icon('pirate')} ${escape(pc.upside.title)}${dmg?' <em>[DAMAGED]</em>':''}</span>
         ${dmg?'':`<span class="pirate-owned-bonus">&#9670; ${escape(pc.upside.bonusDesc)}</span>`}
-        ${dmg?`<span class="pirate-owned-downside" style="color:#aaa;"><em>Effects suspended while damaged</em></span>`:`<span class="pirate-owned-downside">&#9888; ${escape(pc.downside.downsideDesc)}</span>`}
+        ${dmg?`<span class="pirate-owned-downside" style="color:#aaa;"><em>Effects suspended while damaged</em></span>`:pc.downside?`<span class="pirate-owned-downside">&#9888; ${escape(pc.downside.downsideDesc)}</span>`:`<span class="pirate-owned-downside" style="color:#aaa;"><em>No downside</em></span>`}
       </div>`;
     });
     html += `</div>`;
@@ -969,47 +1045,54 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
   if (isCurrent && isMyPanel && !pendingDiscard && !anyPending) {
     if (sellMode) {
       const count = sellSelection.length;
+      const sellBfx = getBonusEffects(game.currentPlayerIndex);
+      const isLiquidator = !!sellBfx.liquidator;
+      const canConfirmSell = isLiquidator ? count >= 1 : count === 1;
+      const sellLabel = isLiquidator
+        ? `${icon('pirate')} Trade to Pirates — select any number of cards (${count} selected) · Liquidator`
+        : `${icon('pirate')} Trade to Pirates — select exactly 1 card (${count}/1)`;
+      const tokenLabel = isLiquidator
+        ? `${count} ${icon('pirate')} (1 per card)`
+        : `${sellBfx.sellBonus?(config.rules.sellBonusTokens||3):(config.rules.sellTokens||1)} ${icon('pirate')}`;
       html += `<div class="turn-actions sell-mode-banner">
-        <span class="sell-mode-label">${icon('pirate')} Sell to Pirates — select exactly 2 hand cards (${count}/2)</span>
-        <button class="primary" onclick="confirmSell()" ${count===2?'':'disabled'}>&#10003; Sell → ${getBonusEffects(game.currentPlayerIndex).sellBonus?(config.rules.sellBonusTokens||3):(config.rules.sellTokens||2)} ${icon('pirate')}</button>
+        <span class="sell-mode-label">${sellLabel}</span>
+        <button class="primary" onclick="confirmSell()" ${canConfirmSell?'':'disabled'}>&#10003; Trade → ${tokenLabel}</button>
         <button onclick="cancelSell()">&#10007; Cancel</button>
       </div>`;
-    } else if (currentPhase==='production') {
-      // Production phase UI lives in the action-section panel above; just show hide toggle if needed
-      if (passPlay) html += `<div class="turn-actions"><button onclick="toggleHand()">${currentHandHidden?'Show':'Hide'} My Hand</button></div>`;
     } else if (currentPhase==='action') {
-      if (playedThisTurn.size > 0) {
-        const atLimit = playedThisTurn.size >= 2;
-        html += `<div class="turn-actions phase-play-actions">
-          <span class="phase-label">&#127183; Playing cards &mdash; ${playedThisTurn.size}/2 cards played this turn${atLimit?' (limit reached)':''}</span>
-          <button class="primary" onclick="endPlayCardsAction()">&#10003; Done Playing &#8594; Resupply Phase</button>
-          ${passPlay?`<button onclick="toggleHand()">${currentHandHidden?'Show':'Hide'} My Hand</button>`:''}
-        </div>`;
-      } else {
-        const canSteal = fab.stealEnabled && p.hand.some(c=>c.suit==='engine') && game.players.length>1;
-        const canAttack = fab.attackEnabled && p.hand.some(c=>c.suit==='weapons') && game.players.length>1;
-        const canSneak = fab.sneakEnabled && p.hand.some(c=>c.suit==='navigation') && !dfx.navDisabled;
-        const canAid = p.pirateTokens>=RAID_COST;
-        const canDisablePart = bfx.disablePart && game.players.some((pl,i)=>i!==game.currentPlayerIndex&&pl.shipParts.some(sp=>!sp.damaged&&!sp.disabled));
+      const canSteal = fab.stealEnabled && p.hand.some(c=>c.suit==='engine'||c.suit==='wild') && game.players.length>1;
+      const canAttack = fab.attackEnabled && p.hand.some(c=>c.suit==='weapons'||c.suit==='wild') && game.players.length>1;
+      const canSneak = fab.sneakEnabled && p.hand.some(c=>c.suit==='navigation'||c.suit==='wild') && !dfx.navDisabled;
+      const canAid = p.pirateTokens>=RAID_COST;
+      const canSabotage = bfx.sabotage && !p.sabotageUsedThisTurn && p.pirateTokens>=1 && game.cardMarket.some(Boolean);
+      const actionsLeft = actionsRemaining;
+      const noActions = actionsLeft <= 0;
 
-        html += `<div class="turn-actions">`;
-        html += `<div class="action-group"><span class="action-group-label">Play cards</span>`;
-        html += `<span class="action-group-hint">Play up to 2 cards from hand to gain resources/On Play effects</span>`;
-        html += `</div>`;
-        html += `<div class="action-group"><span class="action-group-label">Or take an action</span>`;
-        html += `<button class="suit-btn-engine ability-btn" onclick="useStealAbility()" ${canSteal?'':'disabled'}>${icon('engine')} Steal</button>`;
-        html += `<button class="suit-btn-weapons ability-btn" onclick="useAttackAbility()" ${canAttack?'':'disabled'}>${icon('weapons')} Attack</button>`;
-        html += `<button class="suit-btn-navigation ability-btn" onclick="useSneakAbility()" ${canSneak?'':'disabled'}>${icon('nav')} Sneak</button>`;
-        if (bfx.disablePart) html += `<button onclick="useDisablePartAbility()" ${canDisablePart?'':'disabled'}>🫙 Disable Part</button>`;
-        html += `<button onclick="initSkip()">Skip Turn</button>`;
-        html += `</div>`;
-        html += `<div class="action-group"><span class="action-group-label">Pirate</span>`;
-        html += `<button onclick="enterSellMode()"${dfx.sellDisabled?' disabled':''}>${icon('pirate')} Sell</button>`;
-        html += `<button onclick="useRaid()" ${canAid?'':'disabled'}>🏴‍☠️ Raid (${RAID_COST} ${icon('pirate')})</button>`;
-        html += `</div>`;
-        if (passPlay) html += `<button onclick="toggleHand()">${currentHandHidden?'Show':'Hide'} My Hand</button>`;
-        html += `</div>`;
-      }
+      html += `<div class="turn-actions">`;
+      html += `<div class="action-group action-counter-group">`;
+      html += `<span class="action-counter-label">Actions: <strong>${actionsLeft}/2</strong> remaining</span>`;
+      html += `<button class="primary" onclick="startBuyPhase()">&#10003; Done &#8594; Resupply</button>`;
+      html += `</div>`;
+
+      html += `<div class="action-group"><span class="action-group-label">Deploy</span>`;
+      html += `<span class="action-group-hint">Play a card from hand to tableau — gains resources immediately</span>`;
+      html += `</div>`;
+
+      html += `<div class="action-group"><span class="action-group-label">Abilities</span>`;
+      html += `<button class="suit-btn-engine ability-btn" onclick="useStealAbility()" ${canSteal&&!noActions?'':'disabled'}>${icon('engine')} Steal</button>`;
+      html += `<button class="suit-btn-weapons ability-btn" onclick="useAttackAbility()" ${canAttack&&!noActions?'':'disabled'}>${icon('weapons')} Attack</button>`;
+      html += `<button class="suit-btn-navigation ability-btn" onclick="useSneakAbility()" ${canSneak&&!noActions?'':'disabled'}>${icon('nav')} Sneak</button>`;
+      html += `<button onclick="startSalvage()" ${!noActions?'':'disabled'}>⚙️ Salvage</button>`;
+      html += `</div>`;
+
+      html += `<div class="action-group"><span class="action-group-label">Pirate</span>`;
+      html += `<button onclick="enterSellMode()" ${!noActions&&!dfx.sellDisabled?'':'disabled'}>${icon('pirate')} Sell</button>`;
+      html += `<button onclick="useRaid()" ${canAid?'':'disabled'}>🏴‍☠️ Raid (${RAID_COST} ${icon('pirate')})</button>`;
+      if (bfx.sabotage) html += `<button onclick="useSabotage()" ${canSabotage&&!noActions?'':'disabled'}>🗑️ Sabotage (1 ${icon('pirate')})</button>`;
+      html += `</div>`;
+
+      if (passPlay) html += `<button onclick="toggleHand()">${currentHandHidden?'Show':'Hide'} My Hand</button>`;
+      html += `</div>`;
     }
     // buy phase: buy UI is in card market section
   }
@@ -1033,15 +1116,24 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
       html += renderCard(card,[{label:'&#10007; Discard',fn:`discardForHandLimit(${card.instanceId})`}],' must-discard');
     } else if (isCurrent && isMyPanel && !anyPending && sellMode) {
       const isSelected=sellSelection.includes(card.instanceId);
-      const canSelect=isSelected||sellSelection.length<2;
+      const isLiqSell=getBonusEffects(game.currentPlayerIndex).liquidator;
+      const canSelect=isSelected||(isLiqSell?true:sellSelection.length<1);
       html += renderCard(card,[{label:isSelected?'&#10003; Selected':'&#9658; Select',fn:`toggleSellSelection(${card.instanceId})`,primary:isSelected,disabled:!canSelect}],isSelected?' sell-selected':'');
+    } else if (isCurrent && isMyPanel && pendingBuildHandCost) {
+      // Build cost: any hand card can be paid
+      html += renderCard(card,[{label:'💸 Pay',fn:`selectBuildHandCost(${card.instanceId})`,primary:true}],'');
     } else if (isCurrent && isMyPanel && pendingRepair && !getBonusEffects(game.currentPlayerIndex).repairCheap) {
-      // Hand cards: selectable for the any-suit (2-card) repair path
+      // Hand cards: same-suit/wild always selectable; any suit also selectable when repair penalty active
       const isRepairSelected = pendingRepair.selectedCards.includes(card.instanceId);
-      html += renderCard(card,[{label:isRepairSelected?'&#10003; Selected':'&#9633; Select (any)',fn:`toggleRepairCard(${card.instanceId})`,primary:isRepairSelected}],isRepairSelected?' repair-selected':'');
+      const canRepairSelect = card.suit===pendingRepair.suit || card.suit==='wild' || !!p.repairPenaltyPending;
+      if (canRepairSelect) {
+        html += renderCard(card,[{label:isRepairSelected?'&#10003; Selected':'&#9633; Select',fn:`toggleRepairCard(${card.instanceId})`,primary:isRepairSelected}],isRepairSelected?' repair-selected':'');
+      } else {
+        html += renderCard(card,[],card.instanceId===lastDrawnInstanceId?' newly-drawn':'');
+      }
     } else if (isCurrent && isMyPanel && currentPhase==='action' && !anyPending && !pendingDiscard && !sellMode && !pendingBuyPhase) {
       const freeEff = card.power?.effect;
-      const canActivate = ['freeAttack','freeSteal','freeSneak'].includes(freeEff);
+      const canActivate = ['freeAttack','freeSteal','freeSneak','disablePart'].includes(freeEff);
       const handActions = [{label:'&#9654; Play',fn:`playCard(${card.instanceId})`,primary:!canActivate}];
       if (canActivate) handActions.push({label:'⚡ Activate',fn:`useNeutralFreeAction(${card.instanceId})`,primary:true});
       html += renderCard(card, handActions, card.instanceId===lastDrawnInstanceId?' newly-drawn':'');
@@ -1068,19 +1160,26 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
       const suitCards = p.tableau.filter(c=>c.suit===suit||(c.suit==='wild'&&c.assignedSuit===suit));
       if (suitCards.length===0) return;
       html += `<div class="tableau-suit-col"><div class="tableau-suit-col-header suit-color-${suit}">${SUIT_ICONS[suit]} ${SUIT_LABELS[suit]}</div>`;
+      const isLiqSellTableau = sellMode && !!getBonusEffects(game.currentPlayerIndex).liquidator;
       suitCards.forEach(card => {
         const canUnplay = isCurrent&&currentPhase==='action'&&!anyPending&&!sellMode&&!pendingDiscard&&playedThisTurn.has(card.instanceId);
         const isBuildSelectMode = isCurrent && !!pendingBuildSelect && (card.suit === pendingBuildSelect.suit||(card.suit==='wild'&&card.assignedSuit===pendingBuildSelect.suit));
         const isBuildSelected = isBuildSelectMode && pendingBuildSelect.selectedIds.includes(card.instanceId);
         const isRepairSelectMode = isCurrent && !!pendingRepair && !getBonusEffects(game.currentPlayerIndex).repairCheap
-          && (card.suit===pendingRepair.suit||card.suit==='wild'); // only same-suit/wild eligible from tableau
+          && (card.suit===pendingRepair.suit||card.suit==='wild'||!!p.repairPenaltyPending);
         const isRepairSelected = isRepairSelectMode && pendingRepair.selectedCards.includes(card.instanceId);
+        const isSellSelectMode = isCurrent && isMyPanel && sellMode;
+        const isSellSelected = isSellSelectMode && sellSelection.includes(card.instanceId);
+        const canSellSelect = isSellSelected||(isLiqSellTableau?true:sellSelection.length<1);
         const isTableauSacrifice = isDefenderTarget && pendingDefenderChoice
           && (pendingDefenderChoice.mode==='steal'||pendingDefenderChoice.mode==='attack'||pendingDefenderChoice.mode==='callForAid'||pendingDefenderChoice.mode==='stealExtra'||pendingDefenderChoice.mode==='attackExtra')
           && !pendingDefenderChoice.handTarget
+          && !pendingDefenderChoice.specificCardId  // specific card: no choice — use Accept button
           && (pendingDefenderChoice.suit===null || card.suit===pendingDefenderChoice.suit);
         if (isBuildSelectMode) {
           html += renderCard(card,[{label:isBuildSelected?'&#10003; Selected':'&#9633; Select',fn:`toggleBuildSelectCard(${card.instanceId})`,primary:isBuildSelected}],isBuildSelected?' build-selected':'',true,true);
+        } else if (isSellSelectMode) {
+          html += renderCard(card,[{label:isSellSelected?'&#10003; Selected':'&#9658; Select',fn:`toggleSellSelection(${card.instanceId})`,primary:isSellSelected,disabled:!canSellSelect}],isSellSelected?' sell-selected':'',true,true);
         } else if (isRepairSelectMode) {
           html += renderCard(card,[{label:isRepairSelected?'&#10003; Selected':'&#9633; Select',fn:`toggleRepairCard(${card.instanceId})`,primary:isRepairSelected}],isRepairSelected?' repair-selected':'',true,true);
         } else if (isTableauSacrifice) {
@@ -1097,12 +1196,23 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
     const otherCards = p.tableau.filter(c=>!SUITS_ORDER.includes(c.suit)&&!(c.suit==='wild'&&SUITS_ORDER.includes(c.assignedSuit)));
     if (otherCards.length>0) {
       html += `<div class="tableau-suit-col"><div class="tableau-suit-col-header">Other</div>`;
+      const isLiqSellOther = sellMode && !!getBonusEffects(game.currentPlayerIndex).liquidator;
       otherCards.forEach(card => {
         const canUnplay = isCurrent&&currentPhase==='action'&&!anyPending&&!sellMode&&!pendingDiscard&&playedThisTurn.has(card.instanceId);
         const isRepairSelectMode2 = isCurrent && !!pendingRepair && !getBonusEffects(game.currentPlayerIndex).repairCheap
-          && (card.suit===pendingRepair.suit||card.suit==='wild');
+          && (card.suit==='wild'||!!p.repairPenaltyPending); // wilds always valid; any suit valid when penalty active
         const isRepairSelected2 = isRepairSelectMode2 && pendingRepair.selectedCards.includes(card.instanceId);
-        if (isRepairSelectMode2) html += renderCard(card,[{label:isRepairSelected2?'&#10003; Selected':'&#9633; Select',fn:`toggleRepairCard(${card.instanceId})`,primary:isRepairSelected2}],isRepairSelected2?' repair-selected':'',true,true);
+        const isSellSelectMode2 = isCurrent && isMyPanel && sellMode;
+        const isSellSelected2 = isSellSelectMode2 && sellSelection.includes(card.instanceId);
+        const canSellSelect2 = isSellSelected2||(isLiqSellOther?true:sellSelection.length<1);
+        const isOtherSacrifice = isDefenderTarget && pendingDefenderChoice
+          && (pendingDefenderChoice.mode==='steal'||pendingDefenderChoice.mode==='attack'||pendingDefenderChoice.mode==='callForAid'||pendingDefenderChoice.mode==='stealExtra'||pendingDefenderChoice.mode==='attackExtra')
+          && !pendingDefenderChoice.handTarget
+          && !pendingDefenderChoice.specificCardId
+          && (pendingDefenderChoice.suit===null || card.suit===pendingDefenderChoice.suit);
+        if (isSellSelectMode2) html += renderCard(card,[{label:isSellSelected2?'&#10003; Selected':'&#9658; Select',fn:`toggleSellSelection(${card.instanceId})`,primary:isSellSelected2,disabled:!canSellSelect2}],isSellSelected2?' sell-selected':'',true,true);
+        else if (isRepairSelectMode2) html += renderCard(card,[{label:isRepairSelected2?'&#10003; Selected':'&#9633; Select',fn:`toggleRepairCard(${card.instanceId})`,primary:isRepairSelected2}],isRepairSelected2?' repair-selected':'',true,true);
+        else if (isOtherSacrifice) html += renderCard(card,[{label:'&#10007; Give up',fn:`defenderSacrifice(${card.instanceId})`,danger:true}],' sacrifice-target',true,true);
         else if (canUnplay) html += renderCard(card,[{label:'&#8617; Unplay',fn:`unplayCard(${card.instanceId})`}],' played-this-turn',true,true);
         else html += renderCard(card,[],null,true,true);
       });
@@ -1120,7 +1230,7 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
         <div class="built-part-info">
           <div class="built-part-title">${escape(sp.title)}</div>
           ${sp.power?`<div class="built-part-power">${escape(sp.power.text)} <em>(suspended while disabled)</em></div>`:''}
-          <div class="built-part-status" style="color:#888;">&#9889; Disabled — restores at start of your next turn, or repair during supply phase</div>
+          <div class="built-part-status" style="color:#888;">&#9889; Disabled — restores at start of your next turn, or repair using an action</div>
         </div>
       </div>`;
     });
@@ -1136,7 +1246,7 @@ function renderPlayerPanel(p, idx, isCurrent, passPlay) {
         <div class="built-part-info">
           <div class="built-part-title">${escape(sp.title)}</div>
           ${sp.power?`<div class="built-part-power">${escape(sp.power.text)} <em>(suspended while damaged)</em></div>`:''}
-          <div class="built-part-status damaged-status">${icon('damage')} Damaged — repair during supply phase (${config.rules.repairSameSuitCount||1} same-suit or ${config.rules.repairAnySuitCount||2} any-suit hand cards)</div>
+          <div class="built-part-status damaged-status">${icon('damage')} Damaged — repair using an action (${config.rules.repairSameSuitCount||1} same-suit or ${config.rules.repairAnySuitCount||2} any-suit hand cards)</div>
         </div>
       </div>`;
     });
@@ -1188,8 +1298,9 @@ function renderCard(card, actions, extraClass, condensed, powerInactive=false) {
   const prodBadge = (() => {
     if (!card.symbols) return '';
     const parts=[];
-    if (card.symbols.scrap) parts.push(`+${card.symbols.scrap}${SCRAP_ICON}`);
-    if (card.symbols.tech)  parts.push(`+${card.symbols.tech}${TECH_ICON}`);
+    if (card.symbols.scrap)  parts.push(`+${card.symbols.scrap}${SCRAP_ICON}`);
+    if (card.symbols.tech)   parts.push(`+${card.symbols.tech}${TECH_ICON}`);
+    if (card.symbols.pirate) parts.push(`+${card.symbols.pirate}${icon('pirate')}`);
     return parts.join(' ');
   })();
   // Cost pill top-right
