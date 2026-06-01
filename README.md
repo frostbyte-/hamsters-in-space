@@ -19,7 +19,7 @@ The active player takes **any 2 actions** in any order (repeats allowed). Each a
 - **🃏 Deploy** — play 1 card from hand to tableau; resources (⚙️/🧵/👾) commit immediately. First card each turn gets doubled symbols with Coffee Machine (echo). Cards played this turn can be unplayed (reverses resources, restores action slot).
 - **⚡ Steal** — discard an Engine card (or wild) from hand → pick target player → pick the exact tableau card to steal → defender may Block or Accept
 - **💥 Attack** — discard a Weapons card (or wild) → pick target → pick exact tableau card to destroy, or destroy a pirate token, or damage a ship/pirate part → defender may Block or Accept
-- **🧭 Sneak** — discard a Navigation card (or wild) → choose: **Take from Market** (up to 2 free cards, market refills immediately after each pick) OR **Search Junkyard** (3 random cards shown, keep up to 2). Cards go to hand; use remaining actions to deploy normally.
+- **🧭 Sneak** — discard a Navigation card (or wild) → take up to 2 free cards from the market (market slot refills immediately after each pick). Cards go to hand; use remaining actions to deploy normally.
 - **🛡️ Build** — click ▶ Build on the upgrade panel (requires 3 same-suit tableau cards, or 2 with A.E.G.I.S.) → pay 1 hand card (any suit) as build cost → choose power → ship part completed. 1 tableau card becomes the upgrade (goes to usedCards), the others + the hand card go to junkyard.
 - **🔧 Repair** — restore a damaged or disabled ship/pirate part. Cost: 1 same-suit card from hand or tableau. If repair penalty is active: 1 same-suit card + 1 any-suit card (both from hand or tableau). Free with Rice Cooker.
 - **⚙️ Salvage** — choose: +2 ⚙️ Scrap OR +1 🧵 Tech
@@ -58,7 +58,7 @@ The active player takes **any 2 actions** in any order (repeats allowed). Each a
 |------|------|---------|-----------------|
 | Engine | ⚡ | **Steal** a specific tableau card from an opponent | Discard engine/wild card from hand |
 | Weapons | 💥 | **Attack** — destroy a specific card, token, or damage a part | Discard weapons/wild card from hand |
-| Navigation | 🧭 | **Sneak** — take free cards from market or junkyard | Discard nav/wild card from hand |
+| Navigation | 🧭 | **Sneak** — take up to 2 free cards from market | Discard nav/wild card from hand |
 | Shield | 🛡️ | **Block** a steal or attack (defender only, reactive) | Discard shield/wild card from hand |
 
 Wild cards (🌈) count for any suit activation. Ability buttons are enabled whenever you hold a matching or wild card and have the ship part built.
@@ -131,8 +131,7 @@ actionsRemaining: 0 | 1 | 2   // decremented by spendAction(); 0 auto-advances t
 ```js
 pendingSteal, pendingAttack, pendingDefenderChoice,
 pendingJunkyardPick, pendingJunkyardShop,
-pendingSneakChoice,      // { mode:null|'market', activationCard, marketPicksRemaining? }
-pendingSneakJunkyard,    // { offeredCards:[...], selectedIds:[], activationCard }
+pendingSneakChoice,      // { mode:'market', activationCard, marketPicksRemaining }
 pendingBuyPhase, pendingRepair, pendingCallForAid, pendingDiscard,
 pendingAbilityPick,      // { mode, candidates, targetIdx? }
 pendingBuildSelect,      // { suit, needed, suitCards, selectedIds, handCardId }

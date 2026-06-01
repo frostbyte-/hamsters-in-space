@@ -21,7 +21,7 @@ let pendingDefenderChoice = null; // { mode:'steal'|'attack'|'callForAid'|'attac
 let pendingJunkyardPick = null;   // { allCards:[{idx,item}], selectedIndices:[], maxPicks:N, fromSneak:bool }
 let pendingJunkyardShop = null;   // { previewCards:[{junkIdx,item}], selectedIndices:[], maxPicks } — multi-pick, costs 1 👾
 let pendingSneakChoice = null;    // { mode:null|'market'|'junkyard', activationCard, marketPicksRemaining? }
-let pendingSneakJunkyard = null;  // { offeredCards:[{card},...], selectedIds:[] }
+let pendingSneakJunkyard = null;  // unused — kept for reset safety
 let pendingSneakPlay = null;      // { instanceId, hasMorePicks:bool }
 let pendingSalvageChoice = false; // showing scrap/tech choice
 let pendingBuyPhase = null;       // { cardsBought:0 }
@@ -480,7 +480,7 @@ function anyBlocking() {
     pendingCallForAid||pendingRepair||pendingBuildPowerChoice||pendingAbilityPick||pendingBuildSelect||
     pendingWildSuitChoice||pendingPartDisable||pendingDisablePartAction||pendingSneakTableauSelect||
     pendingSabotageMode||pendingBribeTarget||pendingDoubleAgent||pendingSecondChance||pendingScavenger||
-    pendingBuildHandCost||pendingSalvageChoice||pendingSneakJunkyard);
+    pendingBuildHandCost||pendingSalvageChoice);
 }
 
 // ===== Discard hand card to use ability → goes to junkyard =====
@@ -557,7 +557,7 @@ function useNeutralFreeAction(instanceId) {
     p.hand.splice(cardIdx,1); game.junkyard.push({type:'card',card});
     addLog(`${logPlayer(p.name)} ⚡ activated ${logCard(card.title,card.suit)} from hand`);
     pendingSneakChoice={mode:null,activationCard:card};
-    renderGame(); return;
+    selectSneakMarket(); return;
   }
   renderGame();
 }
@@ -980,7 +980,7 @@ function confirmAbilityPick(instanceId) {
     const p=currentPlayer();
     addLog(`${logPlayer(p.name)} ${icon('nav')} initiated Sneak`);
     pendingSneakChoice={mode:null, activationCard:c};
-    renderGame();
+    selectSneakMarket();
   } else if (mode==='block') {
     if (!activateBlockAbility(targetIdx, card)) return;
     const {mode:defMode, attackerIdx} = pendingDefenderChoice;
@@ -1216,7 +1216,7 @@ function useSneakAbility() {
     const card=activateAbility('navigation', candidates[0]);
     addLog(`${logPlayer(p.name)} ${icon('nav')} initiated Sneak`);
     pendingSneakChoice={mode:null, activationCard:card};
-    renderGame();
+    selectSneakMarket();
   } else {
     pendingAbilityPick={mode:'sneak', candidates};
     renderGame();
@@ -1235,61 +1235,6 @@ function selectSneakMarket() {
   _applySneakNavBonus();
   pendingSneakChoice={...pendingSneakChoice, mode:'market', marketPicksRemaining:2};
   renderGame();
-}
-
-function selectSneakJunkyard() {
-  if (!pendingSneakChoice||pendingSneakChoice.mode!==null) return;
-  _applySneakNavBonus();
-  const activationCard=pendingSneakChoice.activationCard;
-  pendingSneakChoice=null;
-  const junkCards=game.junkyard.filter(i=>i.type==='card');
-  if (junkCards.length===0) { flash("No cards in junkyard"); _endSneakAction(); return; }
-  shuffle(junkCards);
-  const offered=junkCards.slice(0,3);
-  // Remove offered cards from junkyard temporarily
-  offered.forEach(item=>{ const idx=game.junkyard.indexOf(item); if(idx>=0) game.junkyard.splice(idx,1); });
-  pendingSneakJunkyard={offeredCards:offered.map(i=>i.card), selectedIds:[], activationCard};
-  renderGame();
-}
-
-function toggleSneakJunkyardCard(idx) {
-  if (!pendingSneakJunkyard) return;
-  const {selectedIds}=pendingSneakJunkyard;
-  const pos=selectedIds.indexOf(idx);
-  if (pos>=0) { selectedIds.splice(pos,1); }
-  else { if (selectedIds.length>=2){flash("Pick up to 2 cards");return;} selectedIds.push(idx); }
-  renderGame();
-}
-
-function confirmSneakJunkyard() {
-  if (!pendingSneakJunkyard) return;
-  const {offeredCards, selectedIds}=pendingSneakJunkyard;
-  const p=currentPlayer();
-  offeredCards.forEach((card,idx)=>{
-    if (selectedIds.includes(idx)) {
-      p.hand.push(card);
-      addLog(`${logPlayer(p.name)} ${icon('nav')} Sneaked ${logCard(card.title,card.suit)} from junkyard`);
-    } else {
-      game.junkyard.push({type:'card',card}); // return to junkyard
-    }
-  });
-  if (selectedIds.length>0) flash(`Sneak! Took ${selectedIds.length} card${selectedIds.length!==1?'s':''} from junkyard.`);
-  pendingSneakJunkyard=null;
-  _endSneakAction();
-}
-
-function cancelSneakJunkyard() {
-  if (!pendingSneakJunkyard) return;
-  const {offeredCards,activationCard}=pendingSneakJunkyard;
-  // Return all offered cards back to junkyard
-  offeredCards.forEach(card=>game.junkyard.push({type:'card',card}));
-  pendingSneakJunkyard=null;
-  // Return activation card to hand if any
-  if (activationCard) {
-    const ji=game.junkyard.findIndex(j=>j.type==='card'&&j.card===activationCard);
-    if(ji>=0){game.junkyard.splice(ji,1); currentPlayer().hand.push(activationCard);}
-  }
-  flash("Sneak cancelled."); renderGame();
 }
 
 function sneakPickMarketCard(marketIdx) {

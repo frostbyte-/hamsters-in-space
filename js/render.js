@@ -282,45 +282,6 @@ function renderActionPanel() {
     </div>`;
   }
 
-  // ── Sneak choice — market or junkyard ─────────────────────────────────────
-  if (pendingSneakChoice && pendingSneakChoice.mode === null) {
-    return `<div class="action-panel nav-panel">
-      <div class="action-panel-title">${icon('nav')} Sneak — choose:</div>
-      <div class="action-choices" style="margin-top:8px;">
-        <button class="primary suit-btn-navigation" onclick="selectSneakMarket()">📡 Take from Market <span style="opacity:.7;">(up to 2 cards)</span></button>
-        <button class="suit-btn-navigation" onclick="selectSneakJunkyard()">🗑️ Search Junkyard <span style="opacity:.7;">(draw 3, keep up to 2)</span></button>
-      </div>
-      <button onclick="cancelSneak()" style="margin-top:8px;">&#10007; Cancel</button>
-    </div>`;
-  }
-
-  // ── Sneak junkyard pick ─────────────────────────────────────────────────────
-  if (pendingSneakJunkyard) {
-    const {offeredCards, selectedIds}=pendingSneakJunkyard;
-    let html=`<div class="action-panel nav-panel">
-      <div class="action-panel-title">${icon('nav')} Sneak — Junkyard (pick up to 2 cards):</div>
-      <div class="action-choices junk-pick-row">`;
-    if (offeredCards.length===0) {
-      html+=`<div class="attack-none">No cards in junkyard</div>`;
-    } else {
-      offeredCards.forEach((card,idx)=>{
-        const isSel=selectedIds.includes(idx);
-        const canSel=isSel||selectedIds.length<2;
-        html+=`<button class="junk-pick-item card card-suit-${card.suit}${isSel?' junk-pick-selected':''}" onclick="toggleSneakJunkyardCard(${idx})" ${canSel?'':'disabled'}>
-          ${isSel?'&#10003; ':''}${SUIT_ICONS[card.suit]||''} ${escape(card.title)}
-          <div class="card-symbols">${renderSymbols(card.symbols)}</div>
-        </button>`;
-      });
-    }
-    html+=`</div>
-      <div class="action-choices" style="margin-top:8px;">
-        <button class="primary" onclick="confirmSneakJunkyard()">&#10003; Keep ${selectedIds.length} card${selectedIds.length!==1?'s':''}</button>
-        <button onclick="cancelSneakJunkyard()">&#10007; Cancel Sneak</button>
-      </div>
-    </div>`;
-    return html;
-  }
-
   // ── Build power choice ──────────────────────────────────────────────────────
   if (pendingBuildPowerChoice) {
     const {suit, cards, powerCardInstanceId} = pendingBuildPowerChoice;
